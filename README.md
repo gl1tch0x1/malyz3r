@@ -140,6 +140,49 @@ cli.py
 - Future roadmap section for community engagement.
 
 ----------------------------------------------------------------
+
+## 🗺️ Workflow Architecture
+
+```mermaid
+flowchart TD
+  Start([User Input: File/Path])
+  subgraph CLI
+    Menu["Show Menu & Get User Choice"]
+  end
+  Start --> Menu
+  Menu -->|Scan with YARA| YARA
+  Menu -->|Scan with VirusTotal| VT
+  Menu -->|Extract Metadata| Meta
+  Menu -->|Exit| End([Exit])
+
+  subgraph YARA["YARA Engine"]
+    YARACompile["Compile YARA Rules"]
+    YARAScan["Scan File(s) with Rules"]
+    YARAResult["Show YARA Results"]
+  end
+  YARA --> YARACompile --> YARAScan --> YARAResult
+  YARAResult --> Menu
+
+  subgraph VT["VirusTotal"]
+    Hash["Hash File"]
+    VTAPI["Query VirusTotal API"]
+    VTResult["Show VT Results"]
+  end
+  VT --> Hash --> VTAPI --> VTResult
+  VTResult --> Menu
+
+  subgraph Meta["Metadata Extraction"]
+    MetaCheck["Ask: Use ExifTool?"]
+    ExifTool["Run ExifTool (if available)"]
+    PyMagic["Fallback: python-magic"]
+    MetaResult["Show Metadata"]
+  end
+  Meta --> MetaCheck
+  MetaCheck -->|Yes| ExifTool --> MetaResult
+  MetaCheck -->|No| PyMagic --> MetaResult
+  MetaCheck -->|ExifTool Missing| PyMagic --> MetaResult
+  MetaResult --> Menu
+```
 ## 🌟 Future Improvements
 
  * Add machine learning-powered detection.

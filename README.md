@@ -29,9 +29,34 @@ Example cron job (runs every hour):
 ## 🖥️ CLI Real-time Threat Hunting
 
 The CLI now supports:
-- Real-time log monitoring (option 4)
-- Suspicious file investigation (option 5)
-- Rule management (option 6): update, validate, redeploy rules
+- [1] Scan a file with YARA rules
+- [2] Scan with VirusTotal
+- [3] Extract metadata from file (with ExifTool option)
+- [4] Monitor logs in real time (tail -f style)
+- [5] Investigate suspicious files (strings, hexdump, sandbox guidance)
+- [6] Manage YARA rules (update, validate, redeploy)
+- [7] Exit
+
+### Example: Real-time Log Monitoring
+```bash
+python run_scanner.py
+# Choose option 4 to monitor malyz3r.log in real time
+```
+
+### Example: Rule Management
+```bash
+python run_scanner.py
+# Choose option 6 for rule management:
+# 1. Update rules from central repo
+# 2. Validate all rules
+# 3. Redeploy rules to endpoints (manual)
+```
+
+### Example: Suspicious File Investigation
+```bash
+python run_scanner.py
+# Choose option 5 and provide the suspicious file path
+```
 ## Centralized Logging
 
 All scan results are logged to `malyz3r.log` (configurable via `MALYZ3R_LOG_FILE` env var). Logs can be forwarded to syslog or Fluentd for aggregation.
@@ -191,10 +216,13 @@ flowchart TD
     Menu["Show Menu & Get User Choice"]
   end
   Start --> Menu
-  Menu -->|Scan with YARA| YARA
-  Menu -->|Scan with VirusTotal| VT
-  Menu -->|Extract Metadata| Meta
-  Menu -->|Exit| End([Exit])
+  Menu -->|1. Scan with YARA| YARA
+  Menu -->|2. Scan with VirusTotal| VT
+  Menu -->|3. Extract Metadata| Meta
+  Menu -->|4. Monitor Logs| LogMon
+  Menu -->|5. Investigate Suspicious File| Investigate
+  Menu -->|6. Rule Management| RuleMgmt
+  Menu -->|7. Exit| End([Exit])
 
   subgraph YARA["YARA Engine"]
     YARACompile["Compile YARA Rules"]
@@ -223,6 +251,29 @@ flowchart TD
   MetaCheck -->|No| PyMagic --> MetaResult
   MetaCheck -->|ExifTool Missing| PyMagic --> MetaResult
   MetaResult --> Menu
+
+  subgraph LogMon["Log Monitoring"]
+    TailLog["Tail malyz3r.log in real time"]
+    LogMonResult["Show Live Log Output"]
+  end
+  LogMon --> TailLog --> LogMonResult --> Menu
+
+  subgraph Investigate["Suspicious File Investigation"]
+    FileInfo["Show File Info"]
+    Strings["Extract Strings"]
+    Hexdump["Show Hexdump"]
+    Sandbox["Sandbox Guidance"]
+    InvResult["Show Investigation Results"]
+  end
+  Investigate --> FileInfo --> Strings --> Hexdump --> Sandbox --> InvResult --> Menu
+
+  subgraph RuleMgmt["Rule Management"]
+    UpdateRules["Update Rules"]
+    ValidateRules["Validate Rules"]
+    RedeployRules["Redeploy Rules"]
+    RuleMgmtResult["Show Rule Management Results"]
+  end
+  RuleMgmt --> UpdateRules --> ValidateRules --> RedeployRules --> RuleMgmtResult --> Menu
 ```
 ## 🌟 Future Improvements
 

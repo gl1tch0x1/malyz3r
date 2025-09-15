@@ -6,6 +6,47 @@ Combines **YARA-based local scanning**, **metadata exfiltration checks**, and **
 ---
 
 ## Features
+## Real-time Threat Hunting & Automation
+
+- **Automated YARA scans**: Use `scripts/yara_scan.sh` and cron jobs for scheduled endpoint scanning.
+- **Centralized logging**: All scan results are logged to a file (`malyz3r.log`) and can be forwarded to syslog/Fluentd.
+- **Real-time log monitoring**: Monitor logs in real time from the CLI.
+- **Suspicious file investigation**: Use CLI to analyze files with `strings`, `hexdump`, and get sandboxing guidance.
+- **Rule management**: Update, validate, and redeploy YARA rules from the CLI. Supports `/etc/yara-rules` (Linux) or local fallback.
+## 🛠️ Automation Scripts & Cron
+
+Linux endpoints can use the provided script for recursive YARA scans:
+
+```bash
+chmod +x scripts/yara_scan.sh
+./scripts/yara_scan.sh /path/to/scan /etc/yara-rules /var/log/yara_scan.log
+```
+
+Example cron job (runs every hour):
+```cron
+0 * * * * /bin/bash /path/to/scripts/yara_scan.sh /home /etc/yara-rules /var/log/yara_scan.log
+```
+## 🖥️ CLI Real-time Threat Hunting
+
+The CLI now supports:
+- Real-time log monitoring (option 4)
+- Suspicious file investigation (option 5)
+- Rule management (option 6): update, validate, redeploy rules
+## Centralized Logging
+
+All scan results are logged to `malyz3r.log` (configurable via `MALYZ3R_LOG_FILE` env var). Logs can be forwarded to syslog or Fluentd for aggregation.
+## Rule Management Workflow
+
+1. **Update rules**: Pull latest rules from a central git repo or copy to `/etc/yara-rules`.
+2. **Validate rules**: Check all rules for syntax errors before deployment.
+3. **Redeploy rules**: Copy or pull updated rules to all endpoints.
+## Suspicious File Investigation
+
+Use the CLI to analyze suspicious files:
+- View file info
+- Extract printable strings
+- View hexdump (first 256 bytes)
+- Get sandboxing guidance
 - **Advanced YARA scanning** with real-world malware signatures:
   - Windows PE, Linux ELF, macOS Mach-O
   - PDFs and Office files with malicious macros

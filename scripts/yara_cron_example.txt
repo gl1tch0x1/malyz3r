@@ -1,0 +1,3 @@
+# Example cron job for automated YARA scans (edit paths as needed)
+# Runs every hour and logs to /var/log/yara_scan.log
+0 * * * * /bin/bash /path/to/scripts/yara_scan.sh /home /etc/yara-rules /var/log/yara_scan.log

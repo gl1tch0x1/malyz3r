@@ -1,4 +1,6 @@
+
 colorama
 python-magic
 requests
 yara-python
+psutil

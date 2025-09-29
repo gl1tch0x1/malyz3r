@@ -1,3 +1,56 @@
+# malyz3r: Advanced Malware Scanner
+
+## Features
+- **Comprehensive YARA scanning**: Scans files, directories, and process memory using advanced and community YARA rules (including [YARA-Rules](https://github.com/Yara-Rules/rules)).
+- **Memory scanning**: Scan all running processes' memory for fileless and in-memory threats.
+- **Rule management**: Update, validate, and fetch the latest YARA rules from GitHub directly from the CLI.
+- **VirusTotal integration**: Query file hashes against VirusTotal.
+- **Metadata extraction**: Extract file metadata using ExifTool or python-magic.
+- **Investigation tools**: Strings, hexdump, and more for suspicious files.
+- **Centralized logging**: Colorized output and persistent logs.
+- **Dependency checks**: Ensures all required binaries and Python packages are present.
+- **Test suite**: Run `python -m malware_scanner.test_suite` to validate core functionality.
+
+## Installation
+1. Clone this repository.
+2. Install dependencies:
+  ```bash
+  pip install -r requirements.txt
+  ```
+3. (Optional) Fetch the latest YARA-Rules for maximum coverage:
+  - Use the CLI: Rule Management > Fetch/Update YARA-Rules from GitHub
+
+## Usage
+Run the scanner:
+```bash
+python run_scanner.py
+```
+
+## Menu Options
+- Scan a file with YARA rules
+- Scan with VirusTotal
+- Extract metadata from file
+- Scan all running processes' memory with YARA
+- Monitor logs in real time
+- Investigate suspicious files
+- Manage YARA rules (update, validate, fetch from GitHub)
+- Exit
+
+## Advanced YARA Rules
+You can add your own rules to `malware_scanner/rules/` or use the full [YARA-Rules](https://github.com/Yara-Rules/rules) set for maximum detection.
+
+## Test Suite
+Run all core tests:
+```bash
+python -m malware_scanner.test_suite
+```
+
+## Requirements
+- Python 3.8+
+- colorama, python-magic, requests, yara-python, psutil
+
+## License
+MIT
 ## malyz3r: Advanced Malware Scanner 🕵️‍♂️
 
 Malware detection toolkit built for **security researchers**, **blue teams**, and **DFIR analysts**.  

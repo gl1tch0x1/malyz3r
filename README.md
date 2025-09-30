@@ -1,5 +1,8 @@
-# malyz3r: Advanced Malware Scanner
+# malyz3r: Comprehensive Malware Scanner
+Malware detection toolkit built for **security researchers**, **blue teams**, and **DFIR analysts**.  
+Combines **YARA-based local scanning**, **metadata exfiltration checks**, and **VirusTotal integration** for next-level threat hunting.
 
+---
 ## Features
 - **Comprehensive YARA scanning**: Scans files, directories, and process memory using advanced and community YARA rules (including [YARA-Rules](https://github.com/Yara-Rules/rules)).
 - **Memory scanning**: Scan all running processes' memory for fileless and in-memory threats.
@@ -51,12 +54,7 @@ python -m malware_scanner.test_suite
 
 ## License
 MIT
-## malyz3r: Advanced Malware Scanner 🕵️‍♂️
 
-Malware detection toolkit built for **security researchers**, **blue teams**, and **DFIR analysts**.  
-Combines **YARA-based local scanning**, **metadata exfiltration checks**, and **VirusTotal integration** for next-level threat hunting.
-
----
 
 ## Features
 ## Real-time Threat Hunting & Automation
@@ -79,7 +77,7 @@ Example cron job (runs every hour):
 ```cron
 0 * * * * /bin/bash /path/to/scripts/yara_scan.sh /home /etc/yara-rules /var/log/yara_scan.log
 ```
-## 🖥️ CLI Real-time Threat Hunting
+## CLI Real-time Threat Hunting
 
 The CLI now supports:
 - [1] Scan a file with YARA rules
@@ -260,26 +258,27 @@ cli.py
 
 ----------------------------------------------------------------
 
-## 🗺️ Workflow Architecture
+## Workflow Architecture
 
 ```mermaid
 flowchart TD
-  Start([User Input: File/Path])
+  Start([User Input: File/Directory/Process])
   subgraph CLI
     Menu["Show Menu & Get User Choice"]
   end
   Start --> Menu
-  Menu -->|1. Scan with YARA| YARA
+  Menu -->|1. Scan File/Dir with YARA| YARA
   Menu -->|2. Scan with VirusTotal| VT
   Menu -->|3. Extract Metadata| Meta
   Menu -->|4. Monitor Logs| LogMon
   Menu -->|5. Investigate Suspicious File| Investigate
-  Menu -->|6. Rule Management| RuleMgmt
-  Menu -->|7. Exit| End([Exit])
+  Menu -->|6. Manage YARA Rules| RuleMgmt
+  Menu -->|7. Memory Scan| MemScan
+  Menu -->|8. Exit| End([Exit])
 
   subgraph YARA["YARA Engine"]
-    YARACompile["Compile YARA Rules"]
-    YARAScan["Scan File(s) with Rules"]
+    YARACompile["Compile YARA Rules (local & community)"]
+    YARAScan["Scan File(s)/Dir with Rules"]
     YARAResult["Show YARA Results"]
   end
   YARA --> YARACompile --> YARAScan --> YARAResult
@@ -321,14 +320,21 @@ flowchart TD
   Investigate --> FileInfo --> Strings --> Hexdump --> Sandbox --> InvResult --> Menu
 
   subgraph RuleMgmt["Rule Management"]
-    UpdateRules["Update Rules"]
+    UpdateRules["Update/Fetch Rules (GitHub)"]
     ValidateRules["Validate Rules"]
     RedeployRules["Redeploy Rules"]
     RuleMgmtResult["Show Rule Management Results"]
   end
   RuleMgmt --> UpdateRules --> ValidateRules --> RedeployRules --> RuleMgmtResult --> Menu
+
+  subgraph MemScan["Memory Scan"]
+    ProcEnum["Enumerate Running Processes"]
+    ProcScan["Scan Process Memory with YARA"]
+    MemScanResult["Show Memory Scan Results"]
+  end
+  MemScan --> ProcEnum --> ProcScan --> MemScanResult --> Menu
 ```
-## 🌟 Future Improvements
+## Future Improvements
 
  * Add machine learning-powered detection.
  * Add email attachment scanning.
@@ -336,7 +342,7 @@ flowchart TD
  * Web dashboard for reporting.
 
 -----------------------------------------------------------------
-## 💻 Author
+## Author
 
 * Aashish Pandey
 * GitHub: [gl1tch0x1](https://github.com/gl1tch0x1).

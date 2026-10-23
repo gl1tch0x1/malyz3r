@@ -1,0 +1,12 @@
+.git
+.venv*
+__pycache__
+*.pyc
+*.log
+*.egg-info
+build
+dist
+runs
+local-corpus
+report.json
+.ruff_cache

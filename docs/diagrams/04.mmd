@@ -1,0 +1,16 @@
+stateDiagram-v2
+    [*] --> running: Run directory initialized
+    running --> completed: Complete report without policy rejection
+    running --> rejected: Complete report fails policy
+    running --> incomplete: Incomplete evaluation report
+    running --> timed_out: Worker deadline exceeded
+    running --> resource_limit: Observed RSS exceeds budget
+    running --> failed: Worker or supervisor error
+    running --> cancelled: Analyst interruption
+    completed --> [*]
+    rejected --> [*]
+    incomplete --> [*]
+    timed_out --> [*]
+    resource_limit --> [*]
+    failed --> [*]
+    cancelled --> [*]

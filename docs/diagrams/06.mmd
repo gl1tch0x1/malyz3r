@@ -1,0 +1,10 @@
+flowchart LR
+    Corpus[Same labeled sample content] --> Base[Baseline revision]
+    Corpus --> Candidate[Candidate revision]
+    Base --> BR[Baseline report]
+    Candidate --> CR[Candidate report]
+    BR --> Check[Compatibility check]
+    CR --> Check
+    Check -->|Compatible| Delta[Sample changes and metric deltas]
+    Check -->|Incompatible| Reject[Reject comparison]
+    Delta --> Review[Analyst reviews regressions and improvements]

@@ -1,0 +1,21 @@
+sequenceDiagram
+    actor A as Analyst
+    participant S as Workbench supervisor
+    participant D as Local run directory
+    participant W as Worker process
+    participant E as Evaluator and YARA
+    A->>S: Run manifest, rules, limits, optional policy
+    S->>D: Write request, policy, running status
+    S->>W: Launch with isolated Python import setup
+    W->>E: Validate manifest and compile rule snapshot
+    E->>D: Preserve manifest and rule inputs
+    loop Each sample
+        E->>E: Bounded read, hash check, timed scan
+        E->>D: Flush sample journal and progress
+        S->>W: Monitor elapsed time and process-tree RSS
+    end
+    W->>D: Write report and resolved manifest
+    W-->>S: Exit status
+    S->>S: Assess completeness and optional policy
+    S->>D: Export reports and terminal status
+    S-->>A: Run location and exit code

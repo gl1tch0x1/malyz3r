@@ -1,0 +1,18 @@
+flowchart TD
+    Result[Sample scan result] --> Valid{Scan succeeded?}
+    Valid -->|No| Error[Error or timeout: report incomplete]
+    Valid -->|Yes| Label{Known label?}
+    Label -->|No| Triage[Keep evidence; exclude from metrics]
+    Label -->|Yes| Expected{Current rule expected?}
+    Expected -->|Yes| Positive{Rule matched?}
+    Expected -->|No| Negative{Rule matched?}
+    Positive -->|Yes| TP[True positive]
+    Positive -->|No| FN[False negative]
+    Negative -->|Yes| FP[False positive]
+    Negative -->|No| TN[True negative]
+    TP --> Metrics[Per-rule metrics and confidence bounds]
+    FN --> Metrics
+    FP --> Metrics
+    TN --> Metrics
+    Metrics --> Gate[Optional quality policy]
+    Error --> Gate

@@ -1,0 +1,21 @@
+flowchart TB
+    Analyst[Analyst] --> WB[workbench.py: operational CLI]
+    Analyst --> Direct[lab.py: direct evaluation CLI]
+    Analyst --> Legacy[cli.py and core.py: legacy scanner]
+    WB --> Corpus[corpus.py: inventory and merge]
+    Corpus --> Manifest[Manifest: hashes and asserted labels]
+    Manifest --> WB
+    WB --> Supervisor[Supervisor: deadline and RSS monitoring]
+    Supervisor --> Worker[worker.py: separate Python process]
+    Worker --> Lab[lab.py: compile, scan, evaluate]
+    Direct --> Lab
+    Rules[Rule sources and includes] --> Lab
+    Files[Local sample files] --> Lab
+    Lab --> YARA[Native yara-python engine]
+    Lab --> Stats[statistics.py: Wilson intervals]
+    Lab --> Evidence[Snapshots, progress, journal, report]
+    Evidence --> WB
+    WB --> Quality[quality.py: policies and comparisons]
+    Quality --> Export[artifacts.py: JSON, CSV, HTML]
+    Legacy --> YARA
+    Legacy -. optional hash query .-> VT[VirusTotal]

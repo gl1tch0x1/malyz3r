@@ -1,0 +1,24 @@
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, sans-serif", "fontSize": "15px", "lineColor": "#64748b"}}}%%
+flowchart LR
+    A["1. Prepare corpus<br/>Label, hash and split"]
+    B["2. Develop rules<br/>Test, inspect and tune"]
+    C["3. Freeze and validate<br/>Use held-out data"]
+    D{"Policy passed?"}
+    E["Analyst review<br/>Decide on promotion"]
+    F["Hold release<br/>Resolve evidence gaps"]
+
+    A --> B
+    B --> C
+    B -->|Refine| B
+    C --> D
+    D -->|Yes| E
+    D -->|No| F
+
+    classDef phase fill:#eff6ff,stroke:#3b82f6,color:#172554,stroke-width:1.5px;
+    classDef decision fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
+    classDef review fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
+    classDef hold fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
+    class A,B,C phase;
+    class D decision;
+    class E review;
+    class F hold;

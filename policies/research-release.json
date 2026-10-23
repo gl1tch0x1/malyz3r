@@ -1,0 +1,11 @@
+{
+  "min_recall": 0.9,
+  "max_benign_fpr": 0.001,
+  "min_target_samples": 30,
+  "min_benign_samples": 4000,
+  "min_recall_lower95": 0.8,
+  "max_benign_fpr_upper95": 0.001,
+  "max_unknown_labels": 0,
+  "require_held_out": true,
+  "reject_synthetic": true
+}

@@ -1,0 +1,22 @@
+{
+  "name": "GitHub PHP reference corpus",
+  "minimum_unique_samples": 1001,
+  "sources": [
+    {
+      "repository": "WordPress/WordPress",
+      "commit": "f5268cfbd5361508b32e01897b4a01eed1a1e79d",
+      "label": "benign",
+      "label_basis": "Official WordPress PHP source; assumed benign, not independently adjudicated",
+      "archive_sha256": "94fc92164d00a57ecd56ceb4beca9b6af7096da455f9bd086c4dceae2f9d3e87",
+      "license_url": "https://github.com/WordPress/WordPress/blob/f5268cfbd5361508b32e01897b4a01eed1a1e79d/license.txt"
+    },
+    {
+      "repository": "tennc/webshell",
+      "commit": "6b17eae4a0bc792f996a38ce32772e4db9c7c799",
+      "label": "target",
+      "label_basis": "PHP files in public webshell collection; source-derived target assertion, may include examples or helpers",
+      "archive_sha256": "b79947d30cdb7b51b28cc227090841010000552a3648aba9a6d606291cb99a62",
+      "license_url": "https://github.com/tennc/webshell/blob/6b17eae4a0bc792f996a38ce32772e4db9c7c799/LICENSE"
+    }
+  ]
+}

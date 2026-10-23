@@ -1,0 +1,163 @@
+{
+  "selection": {
+    "status": "selected",
+    "selected": "request_execution_or_encoded",
+    "candidates": [
+      {
+        "name": "broad",
+        "metrics": {
+          "tp": 193,
+          "fp": 33,
+          "tn": 1662,
+          "fn": 93,
+          "recall": 0.6748251748251748,
+          "precision": 0.8539823008849557,
+          "false_positive_rate": 0.019469026548672566,
+          "f1": 0.75390625,
+          "benign_fp": 33,
+          "benign_tn": 1662,
+          "benign_false_positive_rate": 0.019469026548672566,
+          "recall_ci95": {
+            "lower": 0.6185294022068731,
+            "upper": 0.7264868021928687
+          },
+          "benign_fpr_ci95": {
+            "lower": 0.013896231521429228,
+            "upper": 0.02721499663824662
+          }
+        },
+        "report": "/research/experiment/development-runs/20261023T054535Z-87226c064aef/report.json"
+      },
+      {
+        "name": "request_execution",
+        "metrics": {
+          "tp": 149,
+          "fp": 5,
+          "tn": 1690,
+          "fn": 137,
+          "recall": 0.5209790209790209,
+          "precision": 0.9675324675324676,
+          "false_positive_rate": 0.0029498525073746312,
+          "f1": 0.6772727272727272,
+          "benign_fp": 5,
+          "benign_tn": 1690,
+          "benign_false_positive_rate": 0.0029498525073746312,
+          "recall_ci95": {
+            "lower": 0.4631887303024118,
+            "upper": 0.5782132142255572
+          },
+          "benign_fpr_ci95": {
+            "lower": 0.0012606386583808127,
+            "upper": 0.006886948480387638
+          }
+        },
+        "report": "/research/experiment/development-runs/20261023T054535Z-d6f6a3030ac4/report.json"
+      },
+      {
+        "name": "request_execution_or_encoded",
+        "metrics": {
+          "tp": 167,
+          "fp": 6,
+          "tn": 1689,
+          "fn": 119,
+          "recall": 0.583916083916084,
+          "precision": 0.9653179190751445,
+          "false_positive_rate": 0.0035398230088495575,
+          "f1": 0.7276688453159041,
+          "benign_fp": 6,
+          "benign_tn": 1689,
+          "benign_false_positive_rate": 0.0035398230088495575,
+          "recall_ci95": {
+            "lower": 0.5260472172509743,
+            "upper": 0.6395605608609021
+          },
+          "benign_fpr_ci95": {
+            "lower": 0.0016233116199382666,
+            "upper": 0.00770154841243402
+          }
+        },
+        "report": "/research/experiment/development-runs/20261023T054536Z-bfc5337026d3/report.json"
+      }
+    ],
+    "selection_basis": "Maximum development F1 among candidates with benign FPR <= 0.01; not a release gate"
+  },
+  "held_out": {
+    "tp": 51,
+    "fp": 3,
+    "tn": 380,
+    "fn": 33,
+    "recall": 0.6071428571428571,
+    "precision": 0.9444444444444444,
+    "false_positive_rate": 0.007832898172323759,
+    "f1": 0.7391304347826086,
+    "benign_fp": 3,
+    "benign_tn": 380,
+    "benign_false_positive_rate": 0.007832898172323759,
+    "recall_ci95": {
+      "lower": 0.5002180659007766,
+      "upper": 0.7046965637246533
+    },
+    "benign_fpr_ci95": {
+      "lower": 0.002667396534040337,
+      "upper": 0.022773151774034793
+    }
+  },
+  "held_out_run": "/research/experiment/held-out-runs/20261023T054536Z-466fac07c865",
+  "limitations": [
+    "Source-derived labels, not independent ground truth",
+    "One benign project and one webshell collection",
+    "Exact deduplication does not prevent related-variant leakage",
+    "No production release approval; no ML model trained"
+  ],
+  "sources": [
+    {
+      "repository": "WordPress/WordPress",
+      "commit": "f5268cfbd5361508b32e01897b4a01eed1a1e79d",
+      "label": "benign",
+      "label_basis": "Official WordPress PHP source; assumed benign, not independently adjudicated",
+      "archive_sha256": "94fc92164d00a57ecd56ceb4beca9b6af7096da455f9bd086c4dceae2f9d3e87",
+      "license_url": "https://github.com/WordPress/WordPress/blob/f5268cfbd5361508b32e01897b4a01eed1a1e79d/license.txt"
+    },
+    {
+      "repository": "tennc/webshell",
+      "commit": "6b17eae4a0bc792f996a38ce32772e4db9c7c799",
+      "label": "target",
+      "label_basis": "PHP files in public webshell collection; source-derived target assertion, may include examples or helpers",
+      "archive_sha256": "b79947d30cdb7b51b28cc227090841010000552a3648aba9a6d606291cb99a62",
+      "license_url": "https://github.com/tennc/webshell/blob/6b17eae4a0bc792f996a38ce32772e4db9c7c799/LICENSE"
+    }
+  ],
+  "date": "2026-10-23",
+  "environment": "Restricted Linux Docker container; no runtime network; non-root UID 10001; no sample execution",
+  "sample_counts": {
+    "development/target": 286,
+    "development/benign": 1695,
+    "held_out/target": 84,
+    "held_out/benign": 383
+  },
+  "selected_rule_sha256": "58a82de6f23b8184192891ec6acc7bc1e2b7f41ec4ff3bf4fd9953d05b50f1e4",
+  "engine": "yara-python 4.5.4",
+  "complete": true,
+  "scan_errors": 0,
+  "release_gate": {
+    "passed": false,
+    "reasons": [
+      "webshell.yar:PHP_Webshell_Candidate: recall confidence lower bound below threshold or undefined",
+      "webshell.yar:PHP_Webshell_Candidate: benign FPR confidence upper bound above threshold or undefined",
+      "webshell.yar:PHP_Webshell_Candidate: insufficient benign samples",
+      "webshell.yar:PHP_Webshell_Candidate: recall below threshold or undefined",
+      "webshell.yar:PHP_Webshell_Candidate: benign false-positive rate above threshold or undefined"
+    ],
+    "policy": {
+      "min_recall": 0.9,
+      "max_benign_fpr": 0.001,
+      "min_target_samples": 30,
+      "min_benign_samples": 4000,
+      "min_recall_lower95": 0.8,
+      "max_benign_fpr_upper95": 0.001,
+      "max_unknown_labels": 0,
+      "require_held_out": true,
+      "reject_synthetic": true
+    }
+  }
+}

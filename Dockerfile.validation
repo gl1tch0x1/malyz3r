@@ -1,0 +1,14 @@
+ARG PYTHON_IMAGE=python:3.13-slim@sha256:57b29a7c050c4e679e4bea572e14b3965cf4b5839de2da49d55e49ffc4024f39
+FROM ${PYTHON_IMAGE}
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    MALYZ3R_LOG_FILE=/tmp/malyz3r.log \
+    MALYZ3R_RULES_DIR=/app/malware_scanner/rules \
+    MALYZ3R_DATASETS_DIR=/app/datasets \
+    MALYZ3R_CORPUS_DIR=/app/local-corpus \
+    MALYZ3R_SAMPLES_DIR=/app/samples \
+    RUFF_CACHE_DIR=/tmp/ruff-cache
+COPY . /app
+RUN python -m pip install --no-cache-dir -c constraints.txt ".[dev,mcp]"
+USER 10001:10001
+CMD ["python", "tests/run_validation.py"]

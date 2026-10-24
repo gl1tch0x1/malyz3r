@@ -1,0 +1,10 @@
+# Validated runtime versions; update through a tested dependency change.
+colorama==0.4.6
+python-magic==0.4.27
+requests==2.34.2
+yara-python==4.5.4
+psutil==7.2.2
+charset-normalizer==3.5.2
+certifi==2026.10.19
+idna==3.20
+urllib3==2.8.0

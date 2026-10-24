@@ -1,0 +1,62 @@
+{
+  "name": "Harmless regression fixtures",
+  "kind": "synthetic",
+  "samples": [
+    {
+      "path": "benign-login.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "450dd0ace070e08635b19c9179150da4f81e30ea5c77538dbc880ad86863db37"
+    },
+    {
+      "path": "benign-crypto.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "a9538c5f4654a0752920c45015febcc0e37fb83f32c73e26025747d33d10b6af"
+    },
+    {
+      "path": "benign-word.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "e28ead2b8bcaa53bed2b675be773b964ac3555050afb5163a768f08cf3665e5c"
+    },
+    {
+      "path": "benign-pe.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "2f63b923be7db1314ace7c2fc9508da3e1d4c8d5ae1904b1aa7f6d45164993cb"
+    },
+    {
+      "path": "synthetic-phishing.txt",
+      "label": "target",
+      "expected_rules": [
+        "phishing_scripts.yar:Phishing_Script_Generic"
+      ],
+      "sha256": "e74a9c8ff0119e0101310cde67ec912873247eecea38910d72d7dd79477d0f35"
+    },
+    {
+      "path": "synthetic-ransom.txt",
+      "label": "target",
+      "expected_rules": [
+        "ransomware.yar:Ransomware_Generic"
+      ],
+      "sha256": "5c2fa4f31a14b8923a51d3e1a6493a1c5e0fccb6247db0bd9866ae6c366624f1"
+    },
+    {
+      "path": "synthetic-worm.txt",
+      "label": "target",
+      "expected_rules": [
+        "worm.yar:Worm_Generic"
+      ],
+      "sha256": "e27cb40c44c0f7675f04720f7fe1c445393fc2a38f6cd48dbf0bc973c3129f19"
+    },
+    {
+      "path": "synthetic-trojan.txt",
+      "label": "target",
+      "expected_rules": [
+        "trojan.yar:Trojan_Generic"
+      ],
+      "sha256": "4000fa1e4191299218a87d280b49e49a022256ca8d2ff04778c4d949d8cb369a"
+    }
+  ]
+}

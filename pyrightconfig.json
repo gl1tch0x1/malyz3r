@@ -1,0 +1,19 @@
+{
+  "include": [
+    ".",
+    "malware_scanner",
+    "tests",
+    "scripts",
+    "malyz3r"
+  ],
+  "extraPaths": [
+    ".",
+    "tests",
+    "malyz3r",
+    "malyz3r/tests",
+    "typings"
+  ],
+  "stubPath": "typings",
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none"
+}

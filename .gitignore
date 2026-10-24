@@ -16,3 +16,5 @@ local-corpus/
 .pytest_cache/
 .ruff_cache/
 malyz3r/
+
+.venv*/

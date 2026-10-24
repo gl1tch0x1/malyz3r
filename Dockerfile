@@ -26,9 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY constraints.txt pyproject.toml setup.py requirements.txt /app/
 RUN python -m pip install --no-cache-dir -c constraints.txt ".[dev,mcp]"
 
-# Explicitly copy and store all datasets, local corpora, and samples into the Docker image
+# Copy versioned dataset metadata and harmless fixtures; mount private corpora at runtime.
 COPY datasets/ /app/datasets/
-COPY local-corpus/ /app/local-corpus/
 COPY samples/ /app/samples/
 COPY policies/ /app/policies/
 COPY research_rules/ /app/research_rules/
@@ -42,8 +41,8 @@ COPY *.md /app/
 RUN python -m pip install --no-cache-dir --no-deps -e .
 
 # Create persistent output and cache directories with proper permissions
-RUN mkdir -p /app/runs /tmp/ruff-cache && \
-    chmod -R 777 /app/runs /tmp/ruff-cache
+RUN mkdir -p /app/runs /app/local-corpus /tmp/ruff-cache && \
+    chown -R 10001:10001 /app/runs /app/local-corpus /tmp/ruff-cache
 
 # Verification step: Assert all datasets, corpora, and 50+ YARA rules are properly stored in the image
 RUN python -c "\
@@ -57,7 +56,5 @@ print(f'Docker image verification successful: {rules_count} YARA rules and all d
 "
 
 USER 10001:10001
-
-EXPOSE 8000
 
 CMD ["malyz3r-workbench", "--help"]

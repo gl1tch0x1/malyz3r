@@ -1,8 +1,8 @@
 # malyz3r — YARA Rule Engineering Workbench & Threat Analysis Platform
 
-[![Validation Suite](https://img.shields.io/badge/tests-71%2F71%20passing-brightgreen.svg)](tests/)
+[![Validation Suite](https://img.shields.io/badge/tests-72%20local%20checks-brightgreen.svg)](tests/)
 [![YARA Rules](https://img.shields.io/badge/YARA%20Rules-66%20files%20%7C%2069%20detectors-blue.svg)](malware_scanner/rules/)
-[![MCP Server](https://img.shields.io/badge/MCP-FastMCP%20v1.26+-orange.svg)](MCP.md)
+[![MCP Server](https://img.shields.io/badge/MCP-SDK%202.3.0-orange.svg)](MCP.md)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
 [![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -22,7 +22,7 @@
   - [1. Operational Workbench (`malyz3r-workbench`)](#1-operational-workbench-malyz3r-workbench)
   - [2. Direct Evaluation Engine (`malyz3r-lab`)](#2-direct-evaluation-engine-malyz3r-lab)
   - [3. Multi-Provider AI Assistant (`malyz3r-assist`)](#3-multi-provider-ai-assistant-malyz3r-assist)
-  - [4. FastMCP IDE Integration (`malyz3r-mcp`)](#4-fastmcp-ide-integration-malyz3r-mcp)
+  - [4. MCP IDE Integration (`malyz3r-mcp`)](#4-fastmcp-ide-integration-malyz3r-mcp)
   - [5. Interactive Threat Hunting CLI (`malyz3r`)](#5-interactive-threat-hunting-cli-malyz3r)
 - [Detection Engineering Lifecycle (7 Phases)](#detection-engineering-lifecycle-7-phases)
 - [Manifest Schema, Split Isolation & Data Integrity](#manifest-schema-split-isolation--data-integrity)
@@ -50,7 +50,7 @@
    - YARA operates on static byte sequences, strings, and PE metadata. If a binary is packed with UPX, Themida, VMProtect, or a custom polymorphic runtime crypter, plain-text string signatures will fail until the binary is unpacked.
    - Detection signatures based on ephemeral indicators (e.g., hardcoded C2 domains, IP addresses, or transient staging paths) degrade rapidly across threat actor campaigns.
 4. **Worker Process Boundary != OS Sandbox**:
-   - The workbench supervisor executes rule evaluations inside a child Python subprocess (`malware_scanner/worker.py`) guarded by an execution timer (`--wall-seconds`) and resident memory cap (`--memory-limit-mb`).
+   - The workbench supervisor executes rule evaluations inside a child Python subprocess (`malware_scanner/worker.py`) guarded by an execution timer (`--wall-seconds`) and resident memory cap (`--memory-mb`).
    - This subprocess boundary catches engine hangs, regex backtracking stalls, and out-of-memory errors. **It is not an operating system security boundary** (such as a seccomp jail or Firecracker microVM) and does not protect against native kernel vulnerabilities or parsing exploits targeting C-libraries.
 5. **Heuristic Candidate Rules, Not Certified Threat Feeds**:
    - The 66 bundled YARA rule files are open-source detection engineering heuristics curated from public threat reports, malware analyses, and reverse engineering research.
@@ -81,7 +81,7 @@ flowchart TB
         WB[Workbench CLI: workbench.py]
         Direct[Lab CLI: lab.py]
         Assist[Assistant CLI: assistant.py]
-        IDE[IDE / AI Agent: FastMCP]
+        IDE[IDE / AI Agent: MCP]
     end
 
     subgraph Corpus & Manifest Ingestion
@@ -169,7 +169,7 @@ source .venv/bin/activate
 # 3. Install dependencies pinned against strict constraints
 python -m pip install -c constraints.txt .
 
-# 4. (Optional) Install FastMCP IDE telemetry server (Python 3.11+ required)
+# 4. (Optional) Install MCP IDE telemetry server (Python 3.11+ required)
 python -m pip install ".[mcp]"
 ```
 
@@ -177,25 +177,25 @@ python -m pip install ".[mcp]"
 
 ## Docker Packaging & Corpus Persistence
 
-To ensure 100% reproducible testing across diverse host platforms without environment drift, malyz3r provides containerized builds that permanently store all evaluation corpora:
+The container packages the application and versioned research metadata. Private corpora stay outside the build context and can be mounted at runtime:
 - Complete engine, dependencies, and CLI entry points.
 - 66 compiled YARA rule files (`/app/malware_scanner/rules`).
 - Labeled sample datasets (`/app/datasets`).
-- Local corpora (`/app/local-corpus`).
+- An empty mount point for local corpora (`/app/local-corpus`).
 - Regression fixtures (`/app/samples/lab`).
 
 ### Building and Executing via Docker
 
 ```bash
-# Build the production container image
+# Build the analyst container image
 docker build -t malyz3r:latest .
 
-# Run the complete automated test suite (71 tests + linters + CI verification)
+# Run the complete automated test suite (72 tests plus linters; hosted CI is separate)
 docker run --rm malyz3r:latest python tests/run_validation.py
 
 # Run a supervised workbench evaluation, persisting reports to host machine
 docker run --rm -v "$(pwd)/runs:/app/runs" malyz3r:latest \
-  malyz3r-workbench run samples/lab/manifest.json malware_scanner/rules runs/container-run-01 \
+  malyz3r-workbench run samples/lab/manifest.json --rules malware_scanner/rules --runs-dir runs/container-run-01 \
   --wall-seconds 120 --memory-mb 512
 ```
 
@@ -217,7 +217,7 @@ malyz3r-workbench {inventory,merge,run,inspect,compare} [options]
 Scans a folder, records file sizes, computes SHA256 hashes, and outputs an analyst-labeled manifest:
 
 ```bash
-malyz3r-workbench inventory /path/to/ransomware "Incident-2026-Q1" \
+malyz3r-workbench inventory /path/to/ransomware --provenance "Incident-2026-Q1" \
   --label target \
   --expected-rule "ransom_lockbit.yar:Ransomware_LockBit3" \
   --split development \
@@ -240,7 +240,7 @@ malyz3r-workbench run manifest_evaluation_suite.json malware_scanner/rules runs/
   --timeout 10 \
   --max-bytes 67108864 \
   --wall-seconds 180 \
-  --memory-limit-mb 512 \
+  --memory-mb 512 \
   --policy policies/research.json
 ```
 
@@ -336,7 +336,7 @@ malyz3r-assist runs/run-2026-01 advice-local/ --provider openai-compatible \
 
 ---
 
-### 4. FastMCP IDE Integration (`malyz3r-mcp`)
+### 4. MCP IDE Integration (`malyz3r-mcp`)
 
 Implements the Model Context Protocol (v1.26+) over stdio. AI-powered IDEs (Cursor, Antigravity, OpenCode, Claude Desktop) can inspect runs and request advice securely within the workspace.
 
@@ -356,7 +356,7 @@ Implements the Model Context Protocol (v1.26+) over stdio. AI-powered IDEs (Curs
 }
 ```
 
-#### Exposed FastMCP Tools
+#### Exposed MCP Tools
 
 1. **`development_evidence`** (`readOnlyHint=true`, `openWorldHint=false`):
    - Reads a completed development run directory confined to the workspace.
@@ -565,7 +565,7 @@ python tests/smoke_install.py
 ```
 .
 ├── malware_scanner/          # Core Python package
-│   ├── rules/                # 66 production YARA rule files (69 detectors)
+│   ├── rules/                # 66 candidate YARA rule files (69 detectors)
 │   ├── __init__.py           # Package version definition
 │   ├── artifacts.py          # Report export (JSON, CSV, sanitized HTML)
 │   ├── assistant.py          # Multi-provider LLM assistant (OpenAI, Claude, Gemini, Ollama)
@@ -573,7 +573,7 @@ python tests/smoke_install.py
 │   ├── cli.py                # Interactive threat hunting terminal CLI
 │   ├── corpus.py             # Manifest inventory, merge, and verification
 │   ├── lab.py                # Strict YARA compiler and evaluation engine
-│   ├── mcp_server.py         # FastMCP stdio server for IDE integration
+│   ├── mcp_server.py         # MCP stdio server for IDE integration
 │   ├── providers.py          # API client adapters for LLM providers
 │   ├── quality.py            # Quality policy enforcement and regression diffs
 │   ├── scanner.py            # Core file and memory scanning engine

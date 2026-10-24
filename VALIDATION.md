@@ -1,3 +1,23 @@
+# PR #2 integration repair - 24 October 2026
+
+Merged `main` (7dc174a) into the PR branch without rewriting its history. The
+branches independently added many of the same files from the earlier base,
+producing 26 conflicts. The resolution preserves the PR's expanded catalog and
+assistant hardening, and retains main's CI, 18 original fixtures, diagram assets,
+explicit-update-only launcher and strict dependency validation.
+
+The MCP adapter now matches the declared SDK 2.3.0 API. Tests cover automatic and
+legacy stdio negotiation. Private corpora remain excluded from Docker context;
+the application image has an empty corpus mount point and builds from a clean
+checkout. Package discovery excludes test packages.
+
+Validation: Windows Python 3.13 passed the 71-test suite plus the added launcher
+regression, lint/format, strict fixtures, installed-package smoke and pip check.
+Restricted Linux Python 3.13 ran 72 tests: 70 passed and two Windows-only checks
+were skipped; portable validation also passed. These are local results, not a
+claim that hosted CI has completed. Rule count is not detector-quality evidence.
+The records below refer to earlier revisions.
+
 # Validation record — 22 October 2026
 
 ## Multi-provider and MCP update - 23 October 2026

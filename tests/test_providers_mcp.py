@@ -142,49 +142,40 @@ class MCPTests(test_assistant.AssistantBase):
             evidence_for(self.root, "run")
 
     def test_stdio_client_discovers_and_calls_tools(self):
-        from mcp.client.session import ClientSession
-        from mcp.client.stdio import StdioServerParameters, stdio_client
+        from mcp import Client
+        from mcp.client.stdio import StdioServerParameters
 
-        async def check():
+        async def check(mode):
             params = StdioServerParameters(
                 command=sys.executable,
                 args=["-m", "malware_scanner.mcp_server", "--workspace", str(self.root)],
             )
-            async with stdio_client(params) as (read, write):
-                async with ClientSession(read, write) as client:
-                    await client.initialize()
-                    tools = await client.list_tools()
-                    self.assertEqual([tool.name for tool in tools.tools], ["development_evidence"])
-                    result = await client.call_tool(
-                        "development_evidence", {"run_directory": "run"}
-                    )
-                    self.assertFalse(result.isError)
-                    structured = getattr(result, "structuredContent", None) or getattr(
-                        result, "structured_content", None
-                    )
-                    if structured:
-                        self.assertEqual(structured["evidence"]["total_samples"], 1)
-                    else:
-                        text = getattr(result.content[0], "text", "")
-                        self.assertIn('"total_samples": 1', text)
+            async with Client(params, mode=mode, read_timeout_seconds=15) as client:
+                tools = await client.list_tools()
+                self.assertEqual([tool.name for tool in tools.tools], ["development_evidence"])
+                result = await client.call_tool("development_evidence", {"run_directory": "run"})
+                self.assertFalse(result.is_error)
+                self.assertEqual(result.structured_content["evidence"]["total_samples"], 1)
+                denied = await client.call_tool(
+                    "development_evidence", {"run_directory": "../outside"}
+                )
+                self.assertTrue(denied.is_error)
 
-                    denied = await client.call_tool(
-                        "development_evidence", {"run_directory": "../outside"}
-                    )
-                    self.assertTrue(denied.isError)
-
-        asyncio.run(check())
+        for mode in ("auto", "legacy"):
+            with self.subTest(mode=mode):
+                asyncio.run(check(mode))
 
     def test_network_gate(self):
+        from mcp import Client
+
         async def check():
             server = create_server(self.root, True, "anthropic", "test")
-            tools = await server.list_tools()
-            self.assertEqual(len(tools), 2)
-            with patch("malware_scanner.mcp_server.assist") as send:
-                from mcp.server.fastmcp.exceptions import ToolError
-
-                with self.assertRaises(ToolError):
-                    await server.call_tool("request_advice", {"run_directory": "run"})
-                send.assert_not_called()
+            async with Client(server) as client:
+                tools = await client.list_tools()
+                self.assertEqual(len(tools.tools), 2)
+                with patch("malware_scanner.mcp_server.assist") as send:
+                    result = await client.call_tool("request_advice", {"run_directory": "run"})
+                    self.assertTrue(result.is_error)
+                    send.assert_not_called()
 
         asyncio.run(check())

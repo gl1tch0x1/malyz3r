@@ -11,3 +11,5 @@ report.json
 .ruff_cache
 assistant-runs/
 malyz3r/
+
+local-corpus

@@ -35,41 +35,7 @@ def main():
         ]
         for check in checks:
             print("Running: python " + " ".join(check), flush=True)
-            if check == ["-m", "pip", "check"]:
-                res = subprocess.run([sys.executable, *check], capture_output=True, text=True)
-                if res.returncode != 0:
-                    malyz3r_deps = {
-                        "colorama",
-                        "python-magic",
-                        "requests",
-                        "yara-python",
-                        "psutil",
-                        "ruff",
-                        "mcp",
-                    }
-                    lines = [
-                        line
-                        for line in res.stdout.splitlines()
-                        if any(dep in line.lower() for dep in malyz3r_deps)
-                    ]
-                    if lines:
-                        print(
-                            "pip check dependency issue in project dependencies:\n"
-                            + "\n".join(lines),
-                            file=sys.stderr,
-                        )
-                        raise subprocess.CalledProcessError(
-                            res.returncode, [sys.executable, *check], res.stdout, res.stderr
-                        )
-                    else:
-                        print(
-                            "pip check notice: external workstation packages have unrelated warnings (ignoring for malyz3r):"
-                        )
-                        print(res.stdout.strip())
-                else:
-                    print("pip check passed.")
-            else:
-                subprocess.run([sys.executable, *check], check=True, timeout=180)
+            subprocess.run([sys.executable, *check], check=True, timeout=180)
 
 
 if __name__ == "__main__":

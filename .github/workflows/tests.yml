@@ -1,0 +1,58 @@
+name: Tests and packaged install
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -c constraints.txt ".[dev]"
+      - if: matrix.python == '3.13'
+        run: python -m pip install -c constraints.txt ".[mcp]"
+      - run: python -m ruff check malware_scanner tests setup.py run_scanner.py
+      - run: python -m ruff format --check malware_scanner tests setup.py run_scanner.py
+      - run: python -m unittest discover -s tests -v
+      - run: python -m malware_scanner.test_suite
+      - run: python -m malware_scanner.lab samples/lab/manifest.json --strict --output report.json
+      - run: python tests/smoke_install.py
+  offline-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f Dockerfile.validation -t malyz3r-validation:ci .
+      - run: docker run --rm --network none --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 1g --cpus 2 malyz3r-validation:ci
+  security-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install pip-audit==2.10.1 bandit==1.9.4
+      - run: python -m pip_audit -r constraints.txt --no-deps --disable-pip -f json -o dependency-audit.json
+      - run: python -m bandit -r malware_scanner -ll -f json -o static-security.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-check-results
+          path: |
+            dependency-audit.json
+            static-security.json

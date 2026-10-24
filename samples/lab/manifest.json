@@ -57,6 +57,76 @@
         "trojan.yar:Trojan_Generic"
       ],
       "sha256": "4000fa1e4191299218a87d280b49e49a022256ca8d2ff04778c4d949d8cb369a"
+    },
+    {
+      "path": "synthetic-memory.txt",
+      "label": "target",
+      "expected_rules": [
+        "advanced.yar:Fileless_PowerShell_Memory"
+      ],
+      "sha256": "bfe840622dead387cc2f24a22359a734789a6f04ec464620e2c1abbfbf1e39a7"
+    },
+    {
+      "path": "synthetic-beacon.txt",
+      "label": "target",
+      "expected_rules": [
+        "advanced.yar:CobaltStrike_Beacon"
+      ],
+      "sha256": "e96b2b5f6802bdce77ca735037954116cf8af296e6895a869fe107e66c72893e"
+    },
+    {
+      "path": "synthetic-macro.txt",
+      "label": "target",
+      "expected_rules": [
+        "advanced.yar:Suspicious_Macro_Doc"
+      ],
+      "sha256": "dc4d01772669d17bdb612566d7bd4f3d8ff7071a2d61c77412cfc97e77e423f8"
+    },
+    {
+      "path": "synthetic-rtf.txt",
+      "label": "target",
+      "expected_rules": [
+        "advanced.yar:Exploit_CVE_2017_11882"
+      ],
+      "sha256": "1fac275ae13fe4c3706f7076b6a51b686f66fcd7cb22e1fb6a3bbdb223aad2fa"
+    },
+    {
+      "path": "synthetic-injection.txt",
+      "label": "target",
+      "expected_rules": [
+        "advanced.yar:Suspicious_PE_Inject"
+      ],
+      "sha256": "70d2067b4f8499bea2d39c6985fecee763d33ab0a128152f3608cd3bf3c6c0ed"
+    },
+    {
+      "path": "benign-memory.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "29f086bd484bbb9ceabb081e14bb3ffc95674259b99648fce8f367ad3f64fb27"
+    },
+    {
+      "path": "benign-beacon.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "8013299774b5d54e206c15890aae6c9e0c35fedc4bf4b6c88ea7dfe81a8f9479"
+    },
+    {
+      "path": "benign-macro.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "30f7ed876811de9b913471f5444d1aeb723555afe34ed9e3353f9aa1570ec12b"
+    },
+    {
+      "path": "benign-rtf.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "b7bc0bf71ca7d4a54118bcbc4c7abffae2dd3d0e330f7ae02190fe803aed063c"
+    },
+    {
+      "path": "benign-injection.txt",
+      "label": "benign",
+      "expected_rules": [],
+      "sha256": "2c0412de7c9ca89ba1741405afe42bdbbf5c593af401bae7aad9e76161cb151d"
     }
   ]
 }

@@ -13,7 +13,7 @@ from pathlib import Path
 import malware_scanner
 from malware_scanner.lab import compile_rules, main
 rules = Path(malware_scanner.__file__).parent / 'rules'
-assert len(compile_rules(rules).identifiers) >= 50
+assert len(compile_rules(rules).identifiers) == 69
 Path('sample.txt').write_text('ordinary benign text')
 Path('manifest.json').write_text(json.dumps({'samples': [
     {'path': 'sample.txt', 'label': 'benign', 'expected_rules': [], 'split': 'development'}
@@ -34,9 +34,9 @@ print('Installed package and bundled rules: OK')
     env.pop("PYTHONPATH", None)
     env["MALYZ3R_LOG_FILE"] = os.devnull
     with tempfile.TemporaryDirectory() as tmp:
-        subprocess.run([sys.executable, "-E", "-c", code], cwd=tmp, env=env, check=True, timeout=60)
+        subprocess.run([sys.executable, "-I", "-c", code], cwd=tmp, env=env, check=True, timeout=60)
         subprocess.run(
-            [sys.executable, "-E", "-m", "malware_scanner.cli", "--help"],
+            [sys.executable, "-I", "-m", "malware_scanner.cli", "--help"],
             cwd=tmp,
             env=env,
             check=True,

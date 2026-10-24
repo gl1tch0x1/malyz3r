@@ -26,10 +26,12 @@ target samples require at least one expected rule. Unknown samples require an
 empty expected list and are excluded from metrics. Unknown rules and duplicate
 sample content are rejected. Keep manifests and labels under version control.
 
-The bundled dataset is **synthetic**: its eighteen text fixtures verify all nine public rules and their
+The bundled dataset is **synthetic**: its eighteen text fixtures exercise the nine original public rules and their
 matching conditions and known false-positive regressions. It cannot establish
 real malware recall, generalization, or production readiness. Tightened rules
 are candidate heuristics requiring further validation, not validated signatures.
+The expanded catalog has 69 detectors; these fixtures do not establish positive
+coverage for the 60 added detectors.
 
 ## Reports
 

@@ -14,7 +14,13 @@ from malware_scanner.quality import check_policy, compare_reports
 from malware_scanner.workbench import run_job
 
 
-class OperationsTests(unittest.TestCase):
+class OperationsBase(unittest.TestCase):
+    temp: tempfile.TemporaryDirectory[str]
+    root: Path
+    rules: Path
+    rule: Path
+    manifest: Path
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -46,6 +52,11 @@ class OperationsTests(unittest.TestCase):
             )
         )
 
+
+OperationsTestMixin = OperationsBase
+
+
+class OperationsTests(OperationsBase):
     def test_inventory_preserves_unknown_and_deduplicates(self):
         corpus = self.root / "corpus"
         corpus.mkdir()
@@ -106,7 +117,7 @@ class OperationsTests(unittest.TestCase):
     def test_run_writes_snapshots_progress_and_exports(self):
         result = run_job(self.manifest, self.rules, self.root / "runs")
         self.assertEqual(result["status"], "completed")
-        run = Path(result["run_directory"])
+        run = Path(str(result["run_directory"]))
         for name in (
             "status.json",
             "report.json",
@@ -138,7 +149,7 @@ class OperationsTests(unittest.TestCase):
         result = run_job(self.manifest, self.rules, self.root / "runs")
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["exit_code"], 1)
-        self.assertTrue((Path(result["run_directory"]) / "worker.log").stat().st_size)
+        self.assertTrue((Path(str(result["run_directory"])) / "worker.log").stat().st_size)
 
     def test_supervisor_kills_hung_process(self):
         original_popen = subprocess.Popen

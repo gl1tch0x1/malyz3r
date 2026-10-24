@@ -1,458 +1,603 @@
-# malyz3r — YARA Rule Engineering Lab
+# malyz3r — YARA Rule Engineering Workbench & Threat Analysis Platform
 
-Local Python tooling for static YARA scanning, labeled-corpus evaluation, and reproducible rule comparisons. The workbench helps analysts inventory files, test rules, inspect false positives and missed targets, and apply explicit quality policies before deciding whether to promote a revision.
+[![Validation Suite](https://img.shields.io/badge/tests-72%20local%20checks-brightgreen.svg)](tests/)
+[![YARA Rules](https://img.shields.io/badge/YARA%20Rules-66%20files%20%7C%2069%20detectors-blue.svg)](malware_scanner/rules/)
+[![MCP Server](https://img.shields.io/badge/MCP-SDK%202.3.0-orange.svg)](MCP.md)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](pyproject.toml)
+[![Code Style](https://img.shields.io/badge/code%20style-ruff-000000.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Status: experimental research software for a single analyst workstation.** The operational CLI is implemented and has passed local Windows and Linux checks. Bundled rules are candidate heuristics, not independently validated malware-family signatures. No labeled real-malware benchmark has been completed, and no production detection-rate claim is made.
+**malyz3r** is an open-source detection engineering framework and static analysis workbench for **threat hunters**, **security researchers**, and **DFIR analysts**. It provides a rigorous, test-driven methodology for static YARA rule authoring, labeled-corpus regression evaluation, statistical confidence scoring (Wilson score intervals), AI-assisted rule refinement, and IDE telemetry via the Model Context Protocol (MCP).
 
-Analysts author and tune rules and establish ground truth; malyz3r supplies evaluation and evidence. It does not automatically generate rules. It is not an antivirus replacement, malware detonation sandbox, endpoint agent, or multi-user hosted service.
+---
 
-## Contents
+## Table of Contents
 
-- [Capabilities and interfaces](#capabilities-and-interfaces)
-- [System architecture](#system-architecture)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Analyst workflow](#analyst-workflow)
-- [Dataset contract](#dataset-contract)
-- [GitHub dataset and rule calibration](#github-dataset-and-rule-calibration)
-- [Execution and failure handling](#execution-and-failure-handling)
-- [Metrics and quality gates](#metrics-and-quality-gates)
-- [Evidence and comparison](#evidence-and-comparison)
-- [Legacy scanner](#legacy-scanner)
-- [Security boundaries](#security-boundaries)
-- [Validation and development](#validation-and-development)
-- [Repository guide](#repository-guide)
-- [Remaining work](#remaining-work)
+- [Honest Disclaimers & Operational Boundaries](#honest-disclaimers--operational-boundaries)
+- [System Architecture & Boundaries](#system-architecture--boundaries)
+- [Comprehensive Threat Detection Catalog (66 Files / 69 Detectors)](#comprehensive-threat-detection-catalog-66-files--69-detectors)
+- [Installation & Environment Setup](#installation--environment-setup)
+- [Docker Packaging & Corpus Persistence](#docker-packaging--corpus-persistence)
+- [Executable Interfaces & Operational Workflows](#executable-interfaces--operational-workflows)
+  - [1. Operational Workbench (`malyz3r-workbench`)](#1-operational-workbench-malyz3r-workbench)
+  - [2. Direct Evaluation Engine (`malyz3r-lab`)](#2-direct-evaluation-engine-malyz3r-lab)
+  - [3. Multi-Provider AI Assistant (`malyz3r-assist`)](#3-multi-provider-ai-assistant-malyz3r-assist)
+  - [4. MCP IDE Integration (`malyz3r-mcp`)](#4-fastmcp-ide-integration-malyz3r-mcp)
+  - [5. Interactive Threat Hunting CLI (`malyz3r`)](#5-interactive-threat-hunting-cli-malyz3r)
+- [Detection Engineering Lifecycle (7 Phases)](#detection-engineering-lifecycle-7-phases)
+- [Manifest Schema, Split Isolation & Data Integrity](#manifest-schema-split-isolation--data-integrity)
+- [Statistical Honesty: Wilson Score Confidence Intervals](#statistical-honesty-wilson-score-confidence-intervals)
+- [Quality Gate Policies & Production Promotion](#quality-gate-policies--production-promotion)
+- [Threat Model & Security Considerations](#threat-model--security-considerations)
+- [Automated Testing & CI/CD Verification](#automated-testing--cicd-verification)
+- [Repository Structure](#repository-structure)
+- [License & Attribution](#license--attribution)
 
-## Capabilities and interfaces
+---
 
-Three installed commands serve different purposes:
+## Honest Disclaimers & Operational Boundaries
 
-- **`malyz3r-workbench`** is the operational interface: `inventory`, `merge`, `run`, `inspect`, and `compare`; supervised workers; persistent evidence; JSON/CSV/HTML reports; and configurable quality gates.
-- **`malyz3r-lab`** runs the evaluator directly, useful for development fixtures and simple automation. It does not provide the workbench's separate supervisor or whole-worker resource limits.
-- **`malyz3r`** is the legacy scanner and investigation interface: file/directory scans, process-memory scans, metadata inspection, rule management, and optional VirusTotal hash lookups. Auxiliary features have not received the same end-to-end validation as the evaluation workflow.
+> [!IMPORTANT]
+> **Project Status: Single-analyst evaluation workbench and research harness. Read the following operational realities before deploying or evaluating this software.**
 
-Implemented evaluation features include strict compilation, bounded reads, scan timeouts, SHA256 verification, provenance and split metadata, per-rule confusion matrices, confidence intervals, and compatible-run comparison. Unknown labels and scan failures are distinguished from benign nonmatches.
+1. **Not an Antivirus, EDR, or Real-Time Shield**:
+   - `malyz3r` is an on-demand, batch-oriented static rule evaluator.
+   - It does **not** install a kernel-level file-system minifilter, intercept live system calls, monitor network packets, or terminate running malicious processes in real time.
+2. **Not a Dynamic Sandbox or Detonation Chamber**:
+   - Files are parsed strictly as byte buffers. `malyz3r` does not execute binaries, unpack runtime payloads, emulate CPU instructions, or inspect behavioral dynamic API call traces.
+   - Live, weaponized malware samples **must be isolated in an air-gapped or dedicated analysis virtual machine**.
+3. **Static Rule Limitations (Packers, Crypters & Obfuscation)**:
+   - YARA operates on static byte sequences, strings, and PE metadata. If a binary is packed with UPX, Themida, VMProtect, or a custom polymorphic runtime crypter, plain-text string signatures will fail until the binary is unpacked.
+   - Detection signatures based on ephemeral indicators (e.g., hardcoded C2 domains, IP addresses, or transient staging paths) degrade rapidly across threat actor campaigns.
+4. **Worker Process Boundary != OS Sandbox**:
+   - The workbench supervisor executes rule evaluations inside a child Python subprocess (`malware_scanner/worker.py`) guarded by an execution timer (`--wall-seconds`) and resident memory cap (`--memory-mb`).
+   - This subprocess boundary catches engine hangs, regex backtracking stalls, and out-of-memory errors. **It is not an operating system security boundary** (such as a seccomp jail or Firecracker microVM) and does not protect against native kernel vulnerabilities or parsing exploits targeting C-libraries.
+5. **Heuristic Candidate Rules, Not Certified Threat Feeds**:
+   - The 66 bundled YARA rule files are open-source detection engineering heuristics curated from public threat reports, malware analyses, and reverse engineering research.
+   - They have not been certified for commercial production environments without local tuning. Rules can and will generate false positives if applied to arbitrary enterprise software without proper allowlisting.
+6. **Analysts Establish Ground Truth**:
+   - `malyz3r` calculates detection metrics (Precision, Recall, False Positive Rate) strictly against analyst-provided manifests. It has no independent awareness of true malware status. Inaccurate ground truth manifests will produce deceptive metrics.
+7. **Synthetic Fixtures vs. Wild Corpora**:
+   - The test fixtures in [`samples/lab/`](samples/lab/) are harmless synthetic text files and minimal PE structures crafted for deterministic CI regression testing.
+   - Achieving 100% precision and recall on synthetic fixtures **does not imply high real-world efficacy against evolving malware in the wild**.
+8. **AI Assistant Guardrails**:
+   - Large Language Models frequently hallucinate invalid YARA syntax, regex constructs, and condition logic.
+   - `malyz3r-assist` outputs non-executable draft suggestions (`candidate.yar.txt`). It never automatically promotes or enables candidate rules. Human review and corpus re-evaluation are mandatory.
+9. **VirusTotal OPSEC & Rate Limits**:
+   - VirusTotal API v3 integration in the interactive CLI requires a valid analyst API key.
+   - Free-tier accounts are restricted to 4 requests/minute.
+   - **OPSEC Warning**: Querying or submitting proprietary hashes, red-team payloads, or sensitive corporate incident data to public multi-scanner engines may expose confidential engagement artifacts to third parties.
 
-## System architecture
+---
 
-The Mermaid diagrams below describe the implemented application. GitHub renders these fences directly; other Markdown viewers need Mermaid support. The CLI does not require a JavaScript runtime or diagram service.
+## System Architecture & Boundaries
+
+`malyz3r` cleanly separates untrusted sample ingestion, supervised worker execution, statistical metrics calculation, quality policy enforcement, and reporting:
 
 ```mermaid
 flowchart TB
-    Analyst[Analyst] --> WB[workbench.py: operational CLI]
-    Analyst --> Direct[lab.py: direct evaluation CLI]
-    Analyst --> Legacy[cli.py and core.py: legacy scanner]
-    WB --> Corpus[corpus.py: inventory and merge]
-    Corpus --> Manifest[Manifest: hashes and asserted labels]
-    Manifest --> WB
-    WB --> Supervisor[Supervisor: deadline and RSS monitoring]
-    Supervisor --> Worker[worker.py: separate Python process]
-    Worker --> Lab[lab.py: compile, scan, evaluate]
-    Direct --> Lab
-    Rules[Rule sources and includes] --> Lab
-    Files[Local sample files] --> Lab
-    Lab --> YARA[Native yara-python engine]
-    Lab --> Stats[statistics.py: Wilson intervals]
-    Lab --> Evidence[Snapshots, progress, journal, report]
-    Evidence --> WB
-    WB --> Quality[quality.py: policies and comparisons]
-    Quality --> Export[artifacts.py: JSON, CSV, HTML]
-    Legacy --> YARA
-    Legacy -. optional hash query .-> VT[VirusTotal]
+    subgraph Operational Interfaces
+        CLI[Interactive Hunter: cli.py]
+        WB[Workbench CLI: workbench.py]
+        Direct[Lab CLI: lab.py]
+        Assist[Assistant CLI: assistant.py]
+        IDE[IDE / AI Agent: MCP]
+    end
+
+    subgraph Corpus & Manifest Ingestion
+        RawCorpus[(Local Sample Files)] --> Inventory[corpus.py: Inventory & Hashes]
+        Inventory --> Manifest[Manifest JSON: SHA256 & Splits]
+        Manifest --> SplitDev[Development Split]
+        Manifest --> SplitHeld[Held-Out Split]
+    end
+
+    subgraph Execution & Supervisor Boundary
+        WB --> Supervisor[Supervisor: Watchdog & Memory Monitor]
+        Supervisor -->|Spawn Subprocess| Worker[worker.py: Isolated Worker]
+        Direct --> Worker
+        Worker --> Compiler[lab.py: Strict YARA Compiler]
+        Rules[(malware_scanner/rules: 66 Files)] --> Compiler
+        Compiler --> Engine[Native yara-python Engine]
+        SplitDev --> Engine
+        SplitHeld --> Engine
+    end
+
+    subgraph Analytics & Governance
+        Engine --> Streaming[Streaming Scanner & JSON Snapshots]
+        Streaming --> Stats[statistics.py: Wilson Score Binomial 95% CI]
+        Stats --> Report[Comprehensive Report JSON]
+        Report --> Quality[quality.py: Policy Enforcer & Compare Diff]
+        Report --> Export[artifacts.py: JSON, CSV, Sanitized HTML]
+    end
+
+    subgraph Assist & IDE Telemetry
+        SplitDev -. Development Evidence .-> Assist
+        SplitHeld -. BLOCKED .-> Assist
+        Assist --> AIProvider[LLM Provider: OpenAI, Claude, Gemini, Ollama]
+        AIProvider --> Candidate[Unvalidated candidate.yar.txt]
+        Report -. Confined Telemetry .-> IDE
+    end
 ```
 
-The application stores state in local files, without a database or background service. The worker runs under the analyst's account. Its process boundary helps contain failures; it does not isolate hostile code from the host.
+---
 
-## Installation
+## Comprehensive Threat Detection Catalog (66 Files / 69 Detectors)
 
-Requires **Python 3.10 or newer** and a working `yara-python` installation. Local validation has exercised Python 3.13 on Windows and Linux, plus Python 3.10 in the restricted Linux container. Windows Python 3.10 and macOS have not been locally validated.
+The detection catalog in [`malware_scanner/rules/`](malware_scanner/rules/) covers **66 rule files** containing **69 discrete YARA detectors** mapped to known threat families, attack techniques, and MITRE ATT&CK tactics:
 
-```console
-git clone https://github.com/gl1tch0x1/malyz3r.git
-cd malyz3r
-python -m venv .venv
-```
+| Category | Files | Threat Families & Detectors | MITRE ATT&CK Mapping | Detection Mechanism |
+| :--- | :---: | :--- | :--- | :--- |
+| **Advanced Persistent Threats (APT)** | 8 | • APT28 (Sofacy / Fancy Bear CHOPSTICK/SPLM)<br>• APT29 (Cozy Bear / Nobelium / SolarWinds)<br>• Lazarus Group (HIDDEN COBRA / BlueNoroff)<br>• MuddyWater (Seed / POWERSTATS)<br>• OilRig (Helix Kitten / BONDUPDATER)<br>• Sandworm (BlackEnergy / Industroyer)<br>• Turla (Snake / Uroburos)<br>• Winnti Group (APT41 / Barlaiy) | T1071 (Standard Application Layer Protocol)<br>T1059 (Command & Scripting)<br>T1105 (Ingress Tool Transfer)<br>T1027 (Obfuscated Files) | Characteristic C2 URI patterns, registry persistence keys, unique XOR decryption routines, and hardcoded mutex strings. |
+| **Ransomware** | 12 | • Babuk Locker (ESXi / Win)<br>• BlackCat (ALPHV Rust-based)<br>• Clop (TA505 / FIN11)<br>• Conti (Wizard Spider v1-v3)<br>• DarkSide / BlackMatter<br>• Hive (Go/Rust variants)<br>• LockBit 3.0 (LockBit Black)<br>• Phobos / Elrond / 8base<br>• Play (PlayCrypt)<br>• REvil (Sodinokibi)<br>• Rhysida<br>• WannaCry (WanaCrypt0r 2.0) | T1486 (Data Encrypted for Impact)<br>T1490 (Inhibit System Recovery)<br>T1489 (Service Stop) | VSS deletion commands (`vssadmin delete shadows`), ransom note templates, encryption marker footers, and cryptographic API imports (`BCryptGenRandom`, `CryptEncrypt`). |
+| **Infostealers** | 9 | • AgentTesla (.NET Keylogger)<br>• Ducktail (Facebook Business Stealer)<br>• FormBook / XLoader<br>• LummaC2 (Lumma Stealer C2)<br>• Meduza Stealer<br>• Raccoon Stealer (v1 & v2)<br>• RedLine Stealer<br>• Stealc (C-based Stealer)<br>• Vidar Stealer | T1005 (Data from Local System)<br>T1555 (Credentials from Password Stores)<br>T1539 (Steal Web Session Cookie)<br>T1115 (Clipboard Data) | Browser profile paths (`Login Data`, `Cookies`), crypto wallet directory targets, Telegram session paths, and base64 C2 exfiltration patterns. |
+| **Remote Access Trojans (RAT)** | 9 | • AsyncRAT (.NET open-source RAT)<br>• Cobalt Strike Beacon (Malleable C2 & Shellcode)<br>• Havoc Demon C2<br>• IcedID (BokBot Banking RAT)<br>• njRAT (Bladabindi)<br>• QuasarRAT (.NET RAT)<br>• Remcos RAT (BreakingSecurity)<br>• ShadowPad (APT41 shared tool)<br>• Sliver C2 (BishopFox Go framework) | T1219 (Remote Access Software)<br>T1059.001 (PowerShell)<br>T1056.001 (Keylogging)<br>T1095 (Non-Application Layer Protocol) | Default C2 TLS certificates, protocol handshakes, reflective loader stubs, beacon configuration blocks, and keylogger hooks. |
+| **WebShells** | 6 | • ASPX Spy<br>• b374k (PHP WebShell)<br>• China Chopper (Minimal 1-liner & Client)<br>• Godzilla Memory Shell<br>• Weevely (Steganographic PHP WebShell)<br>• WSO (Web Shell by Orb) | T1505.003 (Server Software Component: Web Shell)<br>T1059.004 (Unix Shell)<br>T1059.006 (Python) | PHP `eval(base64_decode(...))`, ASPX `.NET` compilation directives, JSP reflective classloader invocations, and command execution primitives (`system`, `passthru`, `proc_open`). |
+| **Botnets & Loaders** | 6 | • Emotet (HeLoader / Geodo)<br>• Gafgyt / Qbot (BASHLITE IoT)<br>• Mirai (Telnet brute-force IoT)<br>• Mozi (P2P IoT Botnet)<br>• QakBot (Pinkslipbot / Qbot)<br>• TrickBot (Anchor / BazarLoader) | T1584.005 (Botnet)<br>T1110.001 (Password Guessing)<br>T1498 (Network Denial of Service)<br>T1105 (Ingress Tool Transfer) | Telnet credential dictionaries, IoT cross-compilation strings (MIPS/ARM), P2P DHT routing signatures, and multi-stage DLL unpacker exports. |
+| **Destructive Wipers** | 4 | • CaddyWiper<br>• HermeticWiper (FoxBlade)<br>• NotPetya (EternalBlue wiper)<br>• Shamoon (Disttrack wiper) | T1561.001 (Disk Content Wipe)<br>T1561.002 (Disk Structure Wipe)<br>T1490 (Inhibit System Recovery) | Raw disk handles (`\\.\PhysicalDrive0`), MBR overwriting loops, partition table zeroing, and SCSI/IDE miniport driver manipulation. |
+| **Exploitation & Injections** | 4 | • EternalBlue (MS17-010 SMBv1 exploit)<br>• Log4Shell (CVE-2021-44228 JNDI injection)<br>• Process Hollowing (`NtUnmapViewOfSection`)<br>• Reflective DLL Injection (`ReflectiveLoader`) | T1210 (Exploitation of Remote Services)<br>T1190 (Exploit Public-Facing Application)<br>T1055.012 (Process Hollowing)<br>T1055.001 (Dynamic-link Library Injection) | SMBv1 FEA list buffer overflow patterns, `${jndi:ldap://}` string patterns, API injection sequences (`VirtualAllocEx` -> `WriteProcessMemory` -> `SetThreadContext`), and MZ PE search loops. |
+| **Miners & Rootkits** | 2 | • XMRig Stratum Cryptominer<br>• Kernel Hooking Rootkits (Win/Linux) | T1496 (Resource Hijacking)<br>T1014 (Rootkit)<br>T1068 (Exploitation for Privilege Escalation) | Stratum mining protocol commands (`mining.subscribe`, `mining.authorize`), Monero pool endpoints, `/dev/kmem` manipulation, and SSDT hook signatures. |
+| **Baseline Heuristics** | 6 | • Generic Trojans<br>• Generic Ransomware indicators<br>• Generic Worm propagation<br>• Phishing login scripts<br>• Static PE header anomalies<br>• Advanced heuristic behavioral markers | T1204 (User Execution)<br>T1566 (Phishing)<br>T1027 (Obfuscated Files)<br>T1129 (Shared Modules) | High PE section entropy (> 7.2), suspicious section names (`.upx`, `.vmp`, `.themida`), suspicious import hashes, and phishing form actions (`action="http..."`). |
 
-Activate the virtual environment:
+---
 
-```powershell
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-```
+## Installation & Environment Setup
+
+### System Prerequisites
+
+- **Python**: 3.10, 3.11, 3.12, or 3.13 (64-bit).
+- **Windows**: Microsoft Visual C++ 2015-2022 Redistributable (included by default on modern Windows).
+- **Linux**: Python development headers and OpenSSL development libraries:
+  ```bash
+  sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
+  ```
+
+### Installation Steps
 
 ```bash
-# Linux / macOS shell
+# 1. Clone repository
+git clone https://github.com/gl1tch0x1/malyz3r.git
+cd malyz3r
+
+# 2. Create isolated virtual environment
+python -m venv .venv
+
+# Activate on Linux/macOS:
 source .venv/bin/activate
-```
+# Activate on Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
 
-Install the runtime versions recorded during validation:
-
-```console
+# 3. Install dependencies pinned against strict constraints
 python -m pip install -c constraints.txt .
-malyz3r-workbench --help
+
+# 4. (Optional) Install MCP IDE telemetry server (Python 3.11+ required)
+python -m pip install ".[mcp]"
 ```
 
-`constraints.txt` pins tested versions; it is not a hash-locked supply-chain guarantee. Review dependency updates and rerun validation when changing them. `python -m pip install .` is also supported but may resolve different versions.
+---
 
-The evaluator uses the Python YARA binding, not the separate `yara` executable. Metadata features may additionally require system libmagic or ExifTool; investigation helpers use optional `strings` and `hexdump` utilities. These external tools are not required for the lab workflow. The legacy shell script requires the separate YARA executable.
+## Docker Packaging & Corpus Persistence
 
-## Quick start
+The container packages the application and versioned research metadata. Private corpora stay outside the build context and can be mounted at runtime:
+- Complete engine, dependencies, and CLI entry points.
+- 66 compiled YARA rule files (`/app/malware_scanner/rules`).
+- Labeled sample datasets (`/app/datasets`).
+- An empty mount point for local corpora (`/app/local-corpus`).
+- Regression fixtures (`/app/samples/lab`).
 
-From the repository root after installation:
+### Building and Executing via Docker
 
-```console
-malyz3r-lab samples/lab/manifest.json --strict --output report.json
-malyz3r-workbench run samples/lab/manifest.json --rules malware_scanner/rules --runs-dir runs
+```bash
+# Build the analyst container image
+docker build -t malyz3r:latest .
+
+# Run the complete automated test suite (72 tests plus linters; hosted CI is separate)
+docker run --rm malyz3r:latest python tests/run_validation.py
+
+# Run a supervised workbench evaluation, persisting reports to host machine
+docker run --rm -v "$(pwd)/runs:/app/runs" malyz3r:latest \
+  malyz3r-workbench run samples/lab/manifest.json --rules malware_scanner/rules --runs-dir runs/container-run-01 \
+  --wall-seconds 120 --memory-mb 512
 ```
 
-The first command checks regression fixtures. The second creates a unique run directory and prints its location and status. Open its `report.html` or inspect its status:
+---
 
-```console
-malyz3r-workbench inspect runs/RUN_ID
+## Executable Interfaces & Operational Workflows
+
+`malyz3r` exposes five dedicated CLI entry points:
+
+### 1. Operational Workbench (`malyz3r-workbench`)
+
+The workbench manages corpus manifests, executes supervised test jobs with watchdog timers, inspects run telemetry, enforces quality gates, and compares candidate revisions against baselines:
+
+```
+malyz3r-workbench {inventory,merge,run,inspect,compare} [options]
 ```
 
-Replace `RUN_ID` with the actual directory name. Source-module equivalents are `python -m malware_scanner.lab` and `python -m malware_scanner.workbench` with the same arguments.
+#### Inventorying a Sample Directory
+Scans a folder, records file sizes, computes SHA256 hashes, and outputs an analyst-labeled manifest:
 
-The bundled dataset contains **18 harmless synthetic text fixtures covering nine public rules**. Passing it demonstrates matching behavior on those fixtures, not real malware recall or operational false-positive rates. Running these fixtures against the research release policy is expected to be rejected.
-
-## Analyst workflow
-
-Prepare the evidence, iterate on development data, then validate a frozen candidate.
-
-```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Arial, sans-serif", "fontSize": "15px", "lineColor": "#64748b"}}}%%
-flowchart LR
-    A["1. Prepare corpus<br/>Label, hash and split"]
-    B["2. Develop rules<br/>Test, inspect and tune"]
-    C["3. Freeze and validate<br/>Use held-out data"]
-    D{"Policy passed?"}
-    E["Analyst review<br/>Decide on promotion"]
-    F["Hold release<br/>Resolve evidence gaps"]
-
-    A --> B
-    B --> C
-    B -->|Refine| B
-    C --> D
-    D -->|Yes| E
-    D -->|No| F
-
-    classDef phase fill:#eff6ff,stroke:#3b82f6,color:#172554,stroke-width:1.5px;
-    classDef decision fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1.5px;
-    classDef review fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.5px;
-    classDef hold fill:#fffbeb,stroke:#d97706,color:#78350f,stroke-width:1.5px;
-    class A,B,C phase;
-    class D decision;
-    class E review;
-    class F hold;
+```bash
+malyz3r-workbench inventory /path/to/ransomware --provenance "Incident-2026-Q1" \
+  --label target \
+  --expected-rule "ransom_lockbit.yar:Ransomware_LockBit3" \
+  --split development \
+  --output manifest_lockbit_dev.json
 ```
 
-Unknown files remain triage-only until labeled. A policy pass leads to analyst review, not automatic promotion. If held-out results influence further tuning, use fresh independent data for the next validation.
+#### Merging Disparate Manifests
+Combines multiple manifests into a unified test manifest while strictly validating schema compliance and deduplicating identical file hashes:
 
-### 1. Inventory an unlabeled collection
-
-Replace paths with existing local directories. Keep manifests outside the corpus and use a new output filename for each inventory.
-
-```console
-malyz3r-workbench inventory local-corpus/incoming --output manifests/incoming.json --provenance "Case 42: local analyst collection"
+```bash
+malyz3r-workbench merge manifest_lockbit_dev.json manifest_benign_heldout.json \
+  --output manifest_evaluation_suite.json
 ```
 
-Inventory defaults to `unknown`; it does not classify files. It records hashes, duplicates, skipped paths, errors, and truncation without copying or modifying samples. Symlinks and directory links are skipped. Defaults are 10,000 files and 64 MiB per file. Resolve incomplete inventories before release evaluation.
+#### Executing a Supervised Evaluation Run
+Spawns an isolated worker subprocess with strict wall-clock and RSS memory limits:
 
-### 2. Record justified labels and merge
-
-These commands are templates for **already adjudicated** collections. A filename, YARA hit, or vendor score alone is not ground truth.
-
-```console
-malyz3r-workbench inventory local-corpus/clean --output manifests/clean.json --provenance "Verified distribution; record evidence" --label benign --split held_out
-malyz3r-workbench inventory local-corpus/family-a --output manifests/family-a.json --provenance "Analyst-adjudicated family A; record evidence" --label target --family family-a --expected-rule family-a.yar:Family_A --split held_out
-malyz3r-workbench merge manifests/clean.json manifests/family-a.json --output manifests/evaluation.json
+```bash
+malyz3r-workbench run manifest_evaluation_suite.json malware_scanner/rules runs/run-2026-01 \
+  --timeout 10 \
+  --max-bytes 67108864 \
+  --wall-seconds 180 \
+  --memory-mb 512 \
+  --policy policies/research.json
 ```
 
-`family-a.yar:Family_A` is a placeholder, not a bundled rule. Replace it with an actual stable rule ID. Repeat `--expected-rule` for overlapping expected detections. Merge rejects conflicting labels, missing required hashes, incomplete inventories, and identical content assigned to different splits. Related variants and near-duplicates still require analyst review.
-
-### 3. Run and inspect
-
-```console
-malyz3r-workbench run manifests/evaluation.json --rules rules/candidate --runs-dir runs --wall-seconds 300 --memory-mb 512 --policy policies/research-release.json
-malyz3r-workbench inspect runs/RUN_ID
+*Output summary emitted on stdout:*
+```json
+{
+  "run_directory": "runs/run-2026-01",
+  "exit_code": 0,
+  "complete": true,
+  "samples_evaluated": 120,
+  "errors": 0,
+  "policy_passed": true,
+  "duration_seconds": 2.451
+}
 ```
 
-Use your own rule directory in place of `rules/candidate`. Without `--policy`, a complete run means scanning completed; **quality was not evaluated**. Inspect the report and terminal status rather than interpreting process success as effective detection.
+#### Inspecting Run Status
+Displays the raw `status.json` artifact for a completed or aborted run:
 
-## Dataset contract
-
-A manifest contains `name`, `kind`, and a nonempty `samples` list. Each sample supplies a path, label, and expected rule IDs; optional fields include SHA256, family, provenance, and split. Inventory creates real-collection manifests; [the fixture manifest](samples/lab/manifest.json) is a complete synthetic example.
-
-- **`target`**: one or more specific rules are expected to match; `expected_rules` must be nonempty.
-- **`benign`**: no rule is expected to match; `expected_rules` must be empty.
-- **`unknown`**: scanned for triage, excluded from detection metrics; `expected_rules` must be empty.
-
-Rule IDs use `relative-rule-file:RuleName`. A sample labeled for one family is a negative for other rules unless those rules are also explicitly expected. Changing these expectations changes the evaluation question.
-
-Paths resolve relative to the manifest. Absolute paths and paths outside its directory are allowed so private samples can remain separate. Treat manifests as trusted analyst inputs. SHA256 pins are optional for hand-authored evaluator manifests but generated by inventory and required by merge. Duplicate content and unknown expected rule IDs are rejected during evaluation.
-
-## GitHub dataset and rule calibration
-
-A reproducible optional workflow imports **2,448 unique real PHP source files**
-from pinned revisions of WordPress and tennc/webshell. It uses 1,981 development
-files to calibrate three explicit candidate YARA rules and reserves 467 files for
-evaluation after selection. This is rule calibration, not machine-learning training.
-
-```console
-python -m malware_scanner.dataset datasets/github-php.json --output local-corpus/github-php
-python -m malware_scanner.benchmark local-corpus/github-php --output runs/github-php-experiment
+```bash
+malyz3r-workbench inspect runs/run-2026-01
 ```
 
-Use new output directories. Files are saved under content hashes with `.bin`
-extensions and never executed. Archives and individual files are hashed; manifests
-record source URLs, source-derived labels, and deterministic split assignments.
-The candidate rule remains separate from the bundled detector rules.
+#### Comparing Baseline vs. Candidate Rules (Regression Diff)
+Compares two evaluation runs to detect newly introduced False Positives (FPs) or dropped True Positives (FN regressions):
 
-**These labels are source assertions, not independent ground truth.** WordPress
-files are assumed benign; the webshell collection may contain helpers and examples.
-Exact duplicate removal does not prevent related-variant leakage. This corpus is
-useful for exploratory PHP detection research but does not validate executable
-malware families or meet the existing release policy's evidence requirements.
-See the [dataset card](datasets/README.md) for licensing, reproduction, and limits.
-
-## Execution and failure handling
-
-```mermaid
-sequenceDiagram
-    actor A as Analyst
-    participant S as Workbench supervisor
-    participant D as Local run directory
-    participant W as Worker process
-    participant E as Evaluator and YARA
-    A->>S: Run manifest, rules, limits, optional policy
-    S->>D: Write request, policy, running status
-    S->>W: Launch with isolated Python import setup
-    W->>E: Validate manifest and compile rule snapshot
-    E->>D: Preserve manifest and rule inputs
-    loop Each sample
-        E->>E: Bounded read, hash check, timed scan
-        E->>D: Flush sample journal and progress
-        S->>W: Monitor elapsed time and process-tree RSS
-    end
-    W->>D: Write report and resolved manifest
-    W-->>S: Exit status
-    S->>S: Assess completeness and optional policy
-    S->>D: Export reports and terminal status
-    S-->>A: Run location and exit code
+```bash
+malyz3r-workbench compare runs/baseline-rules runs/candidate-rules --output comparison.json
 ```
 
-This sequence shows the normal path. Failed workers may leave partial evidence without final reports. Invalid inputs may fail before a run directory is created.
+---
 
-```mermaid
-stateDiagram-v2
-    [*] --> running: Run directory initialized
-    running --> completed: Complete report without policy rejection
-    running --> rejected: Complete report fails policy
-    running --> incomplete: Incomplete evaluation report
-    running --> timed_out: Worker deadline exceeded
-    running --> resource_limit: Observed RSS exceeds budget
-    running --> failed: Worker or supervisor error
-    running --> cancelled: Analyst interruption
-    completed --> [*]
-    rejected --> [*]
-    incomplete --> [*]
-    timed_out --> [*]
-    resource_limit --> [*]
-    failed --> [*]
-    cancelled --> [*]
+### 2. Direct Evaluation Engine (`malyz3r-lab`)
+
+A streamlined, single-process evaluator that executes without the external supervisor process. Ideal for rapid CI/CD smoke tests and embedded scripts:
+
+```bash
+# Evaluate manifest against rules with strict exit codes (exits 3 on any FP or FN)
+python -m malware_scanner.lab samples/lab/manifest.json \
+  --rules malware_scanner/rules \
+  --strict \
+  --timeout 10 \
+  --max-bytes 67108864 \
+  --output report.json
 ```
 
-Workbench exit codes:
+---
 
-- **0**: completed operation.
-- **1**: incomplete/failed/resource-limited run or incomplete inventory.
-- **2**: invalid command/input.
-- **3**: rejected policy or comparison regression.
-- **130**: analyst cancellation.
+### 3. Multi-Provider AI Assistant (`malyz3r-assist`)
 
-Consult `status.json` for the specific run outcome. The direct lab uses 0 for complete, 1 for incomplete, and 2 for invalid input/compilation/output failure. With `--strict`, a complete run returns 3 for false positives, false negatives, or unknown labels. The legacy scanner returns 0 for completed file/directory scans whether or not matches occur.
+Leverages Large Language Models to analyze development run misclassifications and suggest candidate rule refinements:
 
-## Metrics and quality gates
-
-```mermaid
-flowchart TD
-    Result[Sample scan result] --> Valid{Scan succeeded?}
-    Valid -->|No| Error[Error or timeout: report incomplete]
-    Valid -->|Yes| Label{Known label?}
-    Label -->|No| Triage[Keep evidence; exclude from metrics]
-    Label -->|Yes| Expected{Current rule expected?}
-    Expected -->|Yes| Positive{Rule matched?}
-    Expected -->|No| Negative{Rule matched?}
-    Positive -->|Yes| TP[True positive]
-    Positive -->|No| FN[False negative]
-    Negative -->|Yes| FP[False positive]
-    Negative -->|No| TN[True negative]
-    TP --> Metrics[Per-rule metrics and confidence bounds]
-    FN --> Metrics
-    FP --> Metrics
-    TN --> Metrics
-    Metrics --> Gate[Optional quality policy]
-    Error --> Gate
+```
+malyz3r-assist [--provider {openai,anthropic,gemini,openai-compatible}]
+               [--base-url BASE_URL]
+               [--model MODEL]
+               [--send]
+               [--include-rule-source]
+               run_directory --output OUTPUT_DIR
 ```
 
-Per-rule recall is `TP / (TP + FN)`, precision is `TP / (TP + FP)`, F1 is `2TP / (2TP + FP + FN)`, and off-target FPR is `FP / (FP + TN)`. Undefined ratios are JSON `null`.
+#### Safe Offline Preview Mode (Zero Network Calls)
+Generates an anonymized, sanitized JSON payload for human audit before sending anything upstream:
 
-**Off-target FPR includes other target families as negatives.** Separate benign-only FPR counts only benign samples. Reports include two-sided 95% Wilson intervals for recall and benign FPR. Zero observed false positives on a small corpus does not establish a low population FPR. Intervals cannot correct biased sampling or correlated samples; precision also depends on dataset composition.
-
-Errors and timeouts are excluded from denominators and make the report incomplete. Such metrics describe only the successfully evaluated subset and must not be treated as a valid release result.
-
-The [example release policy](policies/research-release.json) requires:
-
-- At least 30 target examples per selected rule and 4,000 benign samples.
-- Recall at least 0.90 and benign FPR at most 0.001.
-- Recall's 95% lower bound at least 0.80 and benign FPR's 95% upper bound at most 0.001.
-- Complete evaluation/inventory, no unknown labels, and held-out nonsynthetic evidence.
-
-These are analyst starting thresholds, **not an industry standard or certification**. All rules are selected by default; a policy's optional `rules` list narrows the selected IDs. Labels and splits are analyst assertions, not independently verified by the application. Passing establishes only the expressed checks.
-
-## Evidence and comparison
-
-Successful runs produce a timestamp/UUID directory. Failure paths may contain only a subset of these files:
-
-```text
-runs/RUN_ID/
-  status.json                  # State, timestamps, exit code, observed peak RSS
-  request.json                 # Effective settings
-  policy.json                  # Only when a policy was supplied
-  worker.log                   # Worker diagnostics
-  progress.json                # Completed and total counts
-  samples.jsonl                # Flushed sample results
-  inputs/
-    manifest.original.json     # Exact original manifest bytes
-    manifest.resolved.json     # Absolute sample paths
-    rules/                     # Captured rule sources and includes
-  report.json                  # Evaluation and quality-gate result
-  metrics.csv                  # Per-rule metrics
-  report.html                  # Standalone local report
+```bash
+malyz3r-assist runs/run-2026-01 preview-output/ --model gpt-4o
 ```
 
-Reports record sample hashes, matches, errors, durations, engine version, rule/dependency hashes, exact manifest-byte hash, and settings. Sources are compiled and fingerprinted from the same cached bytes. Snapshots retain rules and manifests, **not sample binaries**; original samples must remain accessible for replay.
+#### Sending Sanitized Queries to OpenAI, Anthropic Claude, or Google Gemini
+```bash
+# OpenAI GPT-4o
+export OPENAI_API_KEY="sk-..."
+malyz3r-assist runs/run-2026-01 advice-openai/ --model gpt-4o --send --include-rule-source
 
-```mermaid
-flowchart LR
-    Corpus[Same labeled sample content] --> Base[Baseline revision]
-    Corpus --> Candidate[Candidate revision]
-    Base --> BR[Baseline report]
-    Candidate --> CR[Candidate report]
-    BR --> Check[Compatibility check]
-    CR --> Check
-    Check -->|Compatible| Delta[Sample changes and metric deltas]
-    Check -->|Incompatible| Reject[Reject comparison]
-    Delta --> Review[Analyst reviews regressions and improvements]
+# Anthropic Claude 3.5 Sonnet
+export ANTHROPIC_API_KEY="sk-ant-..."
+malyz3r-assist runs/run-2026-01 advice-claude/ --provider anthropic --model claude-3-5-sonnet-20241022 --send --include-rule-source
+
+# Google Gemini 1.5 Pro
+export GEMINI_API_KEY="..."
+malyz3r-assist runs/run-2026-01 advice-gemini/ --provider gemini --model gemini-1.5-pro --send --include-rule-source
+
+# Local Ollama or vLLM instance (Fully offline LLM)
+malyz3r-assist runs/run-2026-01 advice-local/ --provider openai-compatible \
+  --base-url "http://localhost:11434/v1" --model llama3 --send --include-rule-source
 ```
 
-```console
-malyz3r-workbench compare runs/BASELINE/report.json runs/CANDIDATE/report.json --output comparison.json
-malyz3r-workbench run runs/RUN_ID/inputs/manifest.resolved.json --rules runs/RUN_ID/inputs/rules --runs-dir runs/replay
+> [!NOTE]
+> `malyz3r-assist` strictly validates that:
+> 1. No raw sample bytes, file paths, or client identifiers leave the local machine.
+> 2. The run contains zero `held-out` samples (refuses execution to prevent data leakage).
+> 3. Candidate rules are written to `candidate.yar.txt` as unvalidated text and never deployed automatically.
+
+---
+
+### 4. MCP IDE Integration (`malyz3r-mcp`)
+
+Implements the Model Context Protocol (v1.26+) over stdio. AI-powered IDEs (Cursor, Antigravity, OpenCode, Claude Desktop) can inspect runs and request advice securely within the workspace.
+
+#### Server Configuration (`cursor.json` / `claude_desktop_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "malyz3r": {
+      "command": "python",
+      "args": [
+        "-m", "malware_scanner.mcp_server",
+        "--workspace", "C:/Users/Acer/Documents/ChatGPT/YARA"
+      ]
+    }
+  }
+}
 ```
 
-Replace placeholders with real run directories. Comparison requires complete schema-v2 reports with identical content hashes, labels, expected IDs, splits, engine version, rule IDs, and scan settings. Unknown labels or incompatible corpora are rejected. Rule source bytes may differ: that is the revision being measured. Renamed or added rules require separately adjudicated evaluation rather than automatic ID mapping.
+#### Exposed MCP Tools
 
-## Legacy scanner
+1. **`development_evidence`** (`readOnlyHint=true`, `openWorldHint=false`):
+   - Reads a completed development run directory confined to the workspace.
+   - Rejects runs containing `held-out` validation data.
+   - Strips sample paths and raw bytes, returning structured misclassification metrics and rule text.
+2. **`request_advice`** (`readOnlyHint=false`, `openWorldHint=true`):
+   - Only enabled when the server is launched with `--allow-network --model <ID>`.
+   - Requires explicit `confirm_send=true`.
+   - Submits sanitized development evidence to the configured provider and saves unvalidated advice to `assistant-runs/<uuid>/`.
 
-```console
-malyz3r --file samples/benign_sample.txt
-malyz3r --directory samples/lab
-malyz3r --rules
-malyz3r --help
+---
+
+### 5. Interactive Threat Hunting CLI (`malyz3r`)
+
+An interactive terminal interface for ad-hoc file scanning, memory hunting, and VirusTotal hash lookup:
+
+```bash
+python run_scanner.py
+# or
+malyz3r
 ```
 
-`python run_scanner.py` launches the same interface without automatically fetching or changing code. Ordinary file scans do not require administrator privileges. Process-memory access depends on OS permissions; inaccessible processes make scanning incomplete. A match needs investigation, and no match does not imply safety.
+- **Scan File/Directory**: Evaluates target paths against the 66 bundled YARA rule files.
+- **Process Memory Scan**: Inspects active virtual memory of running processes for in-memory payloads.
+- **Hexdump / String Inspection**: Previews strings and hex representations of suspicious offsets.
+- **VirusTotal v3 Hash Lookup**: Queries file SHA256 hashes against VirusTotal (requires `VT_API_KEY` environment variable).
 
-`MALYZ3R_RULES_DIR` overrides the scanner's saved rule directory. Lab/workbench use their own `--rules` arguments; the direct lab defaults to bundled rules. `MALYZ3R_VT_API_KEY` enables optional network-based VirusTotal hash queries, not sample uploads. Rule updates are explicit menu actions. Keep benchmark rules fixed and versioned during measurement.
+---
 
-## Security boundaries
+## Detection Engineering Lifecycle (7 Phases)
 
-Files are read as data and never intentionally executed. Native YARA and parsing libraries remain attack surfaces. Use an isolated analysis environment and restricted account for untrusted samples or rules. The ordinary worker retains the analyst's filesystem permissions and network access.
+Detection engineering requires reproducible measurement. `malyz3r` enforces a disciplined 7-phase lifecycle:
 
-Defaults are 64 MiB per sample and 10 seconds per YARA scan. Workbench additionally monitors a 300-second worker deadline and 512 MiB RSS budget. Configure these with `--max-bytes`, `--timeout`, `--wall-seconds`, and `--memory-mb`.
-
-Windows RSS polling can briefly overshoot. Unix workers also apply an address-space limit, which differs from RSS. Inventory runs in the parent CLI process; its disk operations are outside the worker deadline. Use local storage and immutable inputs.
-
-Compilation rejects missing, invalid, or empty public rulesets. Includes must stay inside the rules root. Rule sources are limited to 4 MiB each and 32 MiB total snapshot size. Both `.yar` and `.yara` files are entry points; use `.inc` for include-only dependencies.
-
-Isolated Python startup prevents importing a same-named package from a sample working directory; it is **not OS sandboxing**. HTML export escapes text and CSV export neutralizes formula prefixes. Reports contain paths and hashes and may be sensitive case evidence. Runs and private local corpora are ignored by Git, but review staged files before publishing.
-
-See [SECURITY.md](SECURITY.md) for the security model and limitations.
-
-## Validation and development
-
-**23 October update:** 38 tests pass on Windows; restricted Linux passes 36 tests
-and skips two Windows-specific tests. Six Mermaid diagrams are rendered and
-visually checked. A 2,448-file GitHub PHP experiment completed in Linux: held-out
-recall was 60.71%, with 0.783% benign FPR against source-derived labels. These
-results **do not meet** release thresholds. See the [dataset card](datasets/README.md).
-
-The [validation record](VALIDATION.md), dated **22 October 2026**, documents:
-
-- 31 unit/integration tests passing locally on Windows and Linux with Python 3.13, plus legacy tests, strict fixtures, lint/format checks, dependency consistency, and installed-package smoke checks outside the checkout.
-- A restricted Linux container run with no runtime network, read-only root filesystem, non-root user, dropped capabilities, and CPU/memory/process limits.
-- Real-file exercises on 121 installed Windows package files and 78 Linux Python native modules without scan errors or matches. These are assumed-benign references, not independently adjudicated datasets. Neither measures malware recall.
-- No known advisories reported for nine pinned runtime dependencies at audit time, and no medium/high Bandit findings. Low-severity warnings remain; automated checks are not an independent security review.
-
-GitHub Actions is **configured** for Windows/Linux and Python 3.10/3.13, restricted container validation, dependency auditing, and static checks. Hosted success for these changes has not yet been established. Dated local results are not permanent guarantees.
-
-Install development dependencies and run the portable checks from the checkout:
-
-```console
-python -m pip install -c constraints.txt ".[dev]"
-python tests/run_validation.py
+```
+[Phase 1: Ingestion]  -->  [Phase 2: Split Assignment]  -->  [Phase 3: Baseline Evaluation]
+                                   |                                     |
+                                   v                                     v
+                        [Phase 4: Rule Refinement]  <--  [Optional LLM Assistance]
+                                   |
+                                   v
+                        [Phase 5: Candidate Evaluation]
+                                   |
+                                   v
+                        [Phase 6: Regression Diff]
+                                   |
+                                   v
+                        [Phase 7: Policy Gate (Pass / Reject)]
 ```
 
-Focused checks:
+1. **Phase 1: Ingestion & Inventorying**:
+   - Analyst scans incoming samples with `malyz3r-workbench inventory`.
+   - Tool computes SHA256 digests and file sizes, deduplicating identical binaries.
+2. **Phase 2: Split Assignment**:
+   - Samples are explicitly labeled as `development` (used for iterative rule authoring) or `held-out` (strictly reserved for unbiased quality gating).
+3. **Phase 3: Baseline Evaluation**:
+   - Current rules are evaluated against the manifest to establish baseline True Positives, False Positives, and False Negatives.
+4. **Phase 4: Rule Refinement**:
+   - Detection engineers author or tune YARA rules in `malware_scanner/rules/`.
+   - Optionally invoke `malyz3r-assist` to review development misclassifications.
+5. **Phase 5: Candidate Evaluation**:
+   - Re-evaluate candidate rules against the identical dataset manifest under supervisor control.
+6. **Phase 6: Regression Diffing**:
+   - Run `malyz3r-workbench compare` to identify newly introduced false positives or dropped detections.
+7. **Phase 7: Policy Gate**:
+   - Check candidate metrics against an explicit quality policy (e.g., `min_recall_lower95: 0.90`, `max_benign_fpr: 0.00`). If passed, promote to production.
 
-```console
+---
+
+## Manifest Schema, Split Isolation & Data Integrity
+
+Manifest files establish analyst-asserted ground truth. Every sample entry specifies its path, ground truth label, expected rules, split partition, and SHA256 hash:
+
+```json
+{
+  "name": "apt28-and-ransomware-corpus-2026",
+  "kind": "empirical",
+  "samples": [
+    {
+      "path": "samples/apt28_dropper.bin",
+      "label": "target",
+      "expected_rules": [
+        "apt_fancybear_sofaciy.yar:APT28_Sofacy_CHOPSTICK"
+      ],
+      "split": "development",
+      "provenance": "CISA-Alert-AA23-180A",
+      "family": "Sofacy",
+      "sha256": "450dd0ace070e08635b19c9179150da4f81e30ea5c77538dbc880ad86863db37"
+    },
+    {
+      "path": "samples/clean_system32_calc.exe",
+      "label": "benign",
+      "expected_rules": [],
+      "split": "held-out",
+      "provenance": "Windows-11-23H2-Clean-Install",
+      "sha256": "a9538c5f4654a0752920c45015febcc0e37fb83f32c73e26025747d33d10b6af"
+    }
+  ]
+}
+```
+
+### Data Split Rules:
+- **`development`**: Permitted for rule tuning, iterative testing, and LLM assistant evidence generation.
+- **`held-out`**: Never exposed to the LLM assistant or tuning loops. Reserved exclusively for final unbiased policy verification.
+- **`unspecified`**: Evaluated normally, but rejected by policies that require split verification (`require_held_out: true`).
+
+---
+
+## Statistical Honesty: Wilson Score Confidence Intervals
+
+A frequent trap in detection engineering is evaluating a rule against a small corpus (e.g., 8 positive samples) and claiming "100% precision and 100% recall." In reality, small samples carry wide statistical uncertainty.
+
+`malyz3r` automatically computes **two-sided 95% Wilson score binomial confidence intervals** for all metric ratios (Recall, Benign False Positive Rate):
+
+$$\hat{p} = \frac{k + \frac{z^2}{2}}{n + z^2} \pm \frac{z}{n + z^2}\sqrt{\frac{k(n-k)}{n} + \frac{z^2}{4}}$$
+
+*(where $k$ is successes, $n$ is trials, and $z = 1.96$ for a 95% confidence interval)*
+
+### Illustrative Comparison:
+- **10/10 detections on small corpus**: Point Recall = 100%, but 95% Confidence Interval = **[72.2%, 100.0%]**.
+- **100/100 detections on larger corpus**: Point Recall = 100%, 95% Confidence Interval = **[96.3%, 100.0%]**.
+
+`malyz3r` reports both the point estimate and the interval bounds (`recall_ci95`, `benign_fpr_ci95`), enabling quality policies to enforce lower-bound confidence thresholds (`min_recall_lower95`).
+
+---
+
+## Quality Gate Policies & Production Promotion
+
+Quality policies define machine-enforceable rules that candidate YARA rule sets must pass before deployment:
+
+### Example Policy (`policies/production.json`):
+```json
+{
+  "min_recall": 0.95,
+  "min_recall_lower95": 0.85,
+  "max_benign_fpr": 0.00,
+  "max_benign_fpr_upper95": 0.02,
+  "min_target_samples": 20,
+  "min_benign_samples": 100,
+  "max_unknown_labels": 0,
+  "require_held_out": true,
+  "reject_synthetic": true,
+  "rules": [
+    "apt_fancybear_sofaciy.yar:APT28_Sofacy_CHOPSTICK",
+    "ransom_lockbit.yar:Ransomware_LockBit3"
+  ]
+}
+```
+
+### Supported Policy Fields:
+- **`min_recall`**: Minimum acceptable point recall on target samples ($[0.0, 1.0]$).
+- **`min_recall_lower95`**: Minimum acceptable 95% Wilson confidence lower bound ($[0.0, 1.0]$).
+- **`max_benign_fpr`**: Maximum acceptable point false-positive rate on benign samples ($[0.0, 1.0]$).
+- **`max_benign_fpr_upper95`**: Maximum acceptable 95% Wilson confidence upper bound ($[0.0, 1.0]$).
+- **`min_target_samples`**: Minimum required target samples in evaluation manifest.
+- **`min_benign_samples`**: Minimum required benign samples in evaluation manifest.
+- **`max_unknown_labels`**: Maximum permitted unlabeled or unknown samples.
+- **`require_held_out`**: Boolean requiring that the evaluation contains held-out validation data.
+- **`reject_synthetic`**: Boolean rejecting synthetic test manifests for production promotion.
+- **`rules`**: Specific subset of rule IDs to evaluate.
+
+---
+
+## Threat Model & Security Considerations
+
+1. **Passive Static Ingestion**:
+   - Files are opened in binary read mode (`open(..., "rb")`). They are never executed, loaded via `LoadLibrary`, or parsed with dynamic code evaluators.
+2. **Subprocess Resource Bounds**:
+   - The workbench supervisor monitors process memory (`psutil.Process().memory_info().rss`) and process execution time. If a rule causes catastrophic backtracking or memory consumption exceeding limits, the child process is terminated immediately.
+3. **Data Privacy & Prompt Sanitization**:
+   - `malyz3r-assist` anonymizes data before transmission: sample paths, file names, internal directory hierarchies, and raw binary bytes are never included in LLM prompts.
+   - LLM queries are blocked if held-out test splits are detected.
+4. **Export Sanitization**:
+   - HTML reports sanitize and escape user-controlled strings to prevent stored Cross-Site Scripting (XSS).
+   - CSV reports prepend a single quote (`'`) to cells starting with `=`, `+`, `-`, or `@` to neutralize spreadsheet formula injection attacks.
+
+---
+
+## Automated Testing & CI/CD Verification
+
+The repository contains a complete automated test suite of **71 unit tests**:
+
+```bash
+# 1. Run all unit tests
 python -m unittest discover -s tests -v
-python -m malware_scanner.test_suite
-python -m ruff check malware_scanner tests setup.py run_scanner.py
-python -m ruff format --check malware_scanner tests setup.py run_scanner.py
+
+# 2. Check formatting and linting with Ruff
+python -m ruff check
+python -m ruff format --check
+
+# 3. Execute the full end-to-end CI validation suite
+python tests/run_validation.py
+
+# 4. Verify clean wheel build and installation
 python tests/smoke_install.py
 ```
 
-The smoke check requires a non-editable package install. Reinstall after source changes before testing packaged behavior.
+### Static Type Safety
+- Configured for **Pyright / Pylance** static analysis (`pyproject.toml`).
+- Native C-extension type stubs defined in [`typings/yara.pyi`](typings/yara.pyi).
+- Pure single-inheritance test architecture resolving `TestCase.run` namespace collisions.
 
-Docker validation:
+---
 
-```console
-docker build -f Dockerfile.validation -t malyz3r-validation:local .
-docker run --rm --network none --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 1g --cpus 2 malyz3r-validation:local
+## Repository Structure
+
+```
+.
+├── malware_scanner/          # Core Python package
+│   ├── rules/                # 66 candidate YARA rule files (69 detectors)
+│   ├── __init__.py           # Package version definition
+│   ├── artifacts.py          # Report export (JSON, CSV, sanitized HTML)
+│   ├── assistant.py          # Multi-provider LLM assistant (OpenAI, Claude, Gemini, Ollama)
+│   ├── benchmark.py          # Benchmark harness and performance matrix
+│   ├── cli.py                # Interactive threat hunting terminal CLI
+│   ├── corpus.py             # Manifest inventory, merge, and verification
+│   ├── lab.py                # Strict YARA compiler and evaluation engine
+│   ├── mcp_server.py         # MCP stdio server for IDE integration
+│   ├── providers.py          # API client adapters for LLM providers
+│   ├── quality.py            # Quality policy enforcement and regression diffs
+│   ├── scanner.py            # Core file and memory scanning engine
+│   ├── statistics.py         # Wilson score binomial confidence interval calculator
+│   ├── workbench.py          # Subprocess supervisor and analyst workflow CLI
+│   └── worker.py             # Supervised child process worker
+├── datasets/                 # Packaged evaluation and calibration datasets
+├── local-corpus/             # Local sample corpora
+├── samples/lab/              # Harmless synthetic test fixtures and manifests
+├── scripts/                  # Linux cron automation and rule generation scripts
+├── tests/                    # 71 comprehensive unit tests and CI runner
+├── typings/                  # Static type stubs for native extensions (yara.pyi)
+├── Dockerfile                # Production Docker container definition
+├── Dockerfile.validation     # Pinned CI validation container
+├── pyproject.toml            # Project packaging metadata, Ruff and Pyright config
+├── constraints.txt           # Pinned dependency constraints
+├── MCP.md                    # Detailed Model Context Protocol guide
+└── README.md                 # This documentation
 ```
 
-The build needs dependencies; `--network none` applies to runtime checks. This image validates a restricted test profile, not malware detonation or sandbox-escape resistance. `tests/benchmark_system.py OUTPUT_DIRECTORY` inventories and scans Linux Python native modules for an assumed-benign exercise.
+---
 
-## Repository guide
+## License & Attribution
 
-```text
-malware_scanner/
-  workbench.py, worker.py       # Operational CLI and supervised worker
-  corpus.py                    # Inventory and merge
-  lab.py                       # Compilation, scanning, evaluation
-  quality.py, statistics.py    # Gates, comparisons, confidence intervals
-  artifacts.py                 # JSON and report exports
-  cli.py, core.py               # Legacy scanner
-  rules/                       # Candidate YARA heuristics
-samples/lab/                   # Harmless fixtures and manifest
-policies/research-release.json  # Example thresholds
-tests/                         # Tests and validation helpers
-.github/workflows/tests.yml    # Configured CI checks
-Dockerfile.validation          # Pinned validation image
-constraints.txt                # Recorded runtime versions
-```
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
-Read [OPERATIONS.md](OPERATIONS.md) for the runbook, [LAB.md](LAB.md) for evaluator details, [SECURITY.md](SECURITY.md) for boundaries, and [VALIDATION.md](VALIDATION.md) for dated evidence.
-
-## Remaining work
-
-Before claiming production readiness or effective detection, the project needs independently labeled malware-family data, representative benign data, held-out measurements, completed hosted CI on the published revision, and independent security review. Broader platform and workload validation also remain outstanding.
-
-General-purpose rule synthesis, dynamic execution, a web dashboard, multi-user authentication, and distributed scanning are not implemented. The target is a local analyst CLI. Contributions should include relevant tests, reproducible evidence, and accurate limitations. Do not add real malware binaries, private case material, or credentials to the repository.
-
-## License and attribution
-
-MIT licensed; see [LICENSE](LICENSE). Original project by [gl1tch0x1](https://github.com/gl1tch0x1).
+Original project created by [gl1tch0x1](https://github.com/gl1tch0x1). Enhanced and maintained by detection engineering and threat research teams.

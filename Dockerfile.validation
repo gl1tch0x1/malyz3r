@@ -3,8 +3,12 @@ FROM ${PYTHON_IMAGE}
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     MALYZ3R_LOG_FILE=/tmp/malyz3r.log \
+    MALYZ3R_RULES_DIR=/app/malware_scanner/rules \
+    MALYZ3R_DATASETS_DIR=/app/datasets \
+    MALYZ3R_CORPUS_DIR=/app/local-corpus \
+    MALYZ3R_SAMPLES_DIR=/app/samples \
     RUFF_CACHE_DIR=/tmp/ruff-cache
 COPY . /app
-RUN python -m pip install --no-cache-dir -c constraints.txt ".[dev]"
+RUN python -m pip install --no-cache-dir -c constraints.txt ".[dev,mcp]"
 USER 10001:10001
 CMD ["python", "tests/run_validation.py"]

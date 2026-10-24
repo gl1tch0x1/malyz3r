@@ -7,6 +7,9 @@ __pycache__
 build
 dist
 runs
-local-corpus
 report.json
 .ruff_cache
+assistant-runs/
+malyz3r/
+
+local-corpus

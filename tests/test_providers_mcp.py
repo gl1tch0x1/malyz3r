@@ -131,6 +131,15 @@ class ProviderTests(test_assistant.AssistantBase):
     "Optional MCP extra requires Python 3.11+",
 )
 class MCPTests(test_assistant.AssistantBase):
+    def test_noncanonical_workspace_root(self):
+        alias = self.root / "nested"
+        alias.mkdir()
+        noncanonical = alias / ".."
+        result = evidence_for(noncanonical, "run")
+        self.assertEqual(result["evidence"]["total_samples"], 1)
+        with self.assertRaises(ValueError):
+            evidence_for(noncanonical, "../outside")
+
     def test_confined_evidence_and_heldout(self):
         result = evidence_for(self.root, "run")
         self.assertNotIn("private-client", json.dumps(result))

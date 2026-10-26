@@ -1,4 +1,58 @@
+# PR #2 integration repair - 24 October 2026
+
+Merged `main` (7dc174a) into the PR branch without rewriting its history. The
+branches independently added many of the same files from the earlier base,
+producing 26 conflicts. The resolution preserves the PR's expanded catalog and
+assistant hardening, and retains main's CI, 18 original fixtures, diagram assets,
+explicit-update-only launcher and strict dependency validation.
+
+The MCP adapter now matches the declared SDK 2.3.0 API. Tests cover automatic and
+legacy stdio negotiation. Private corpora remain excluded from Docker context;
+the application image has an empty corpus mount point and builds from a clean
+checkout. Package discovery excludes test packages.
+
+Validation: Windows Python 3.13 passed the 71-test suite plus the added launcher
+regression, lint/format, strict fixtures, installed-package smoke and pip check.
+Restricted Linux Python 3.13 ran 72 tests: 70 passed and two Windows-only checks
+were skipped; portable validation also passed. These are local results, not a
+claim that hosted CI has completed. Rule count is not detector-quality evidence.
+The records below refer to earlier revisions.
+
 # Validation record — 22 October 2026
+
+## Multi-provider and MCP update - 23 October 2026
+
+- Windows Python 3.13: 56 tests pass; lint, format, installed package smoke,
+  MCP entry point and dependency consistency checks pass.
+- Restricted Linux Python 3.13: 54 pass, two Windows-only skips; lint, format,
+  fixtures, installed package smoke and dependency checks pass with networking
+  disabled, read-only filesystem, dropped capabilities and resource limits.
+- Automated stdio subprocess test discovers tools, reads development evidence,
+  and rejects traversal; in-memory client verifies network confirmation gating.
+- A separate legacy-mode MCP client successfully retrieved evidence from the real
+  1,981-file development report. This is a local protocol test, not an IDE UI test.
+- All four provider transports use simulated responses in tests. No live provider
+  call, paid model quality benchmark, or interactive IDE certification is claimed.
+- Python 3.13 CI now installs the MCP extra; Python 3.10 skips optional MCP tests.
+  MCP SDK 2.3.0 requires Python 3.11+. Core commands retain Python 3.10 support.
+
+## Optional LLM integration — 23 October 2026
+
+- Windows Python 3.13: all 49 tests pass, including 11 assistant-specific tests.
+- Restricted Linux Python 3.13: 47 pass and two Windows-specific tests are skipped.
+  Lint, format, fixtures, dependency consistency, and non-editable package smoke
+  checks pass on both systems. The installed smoke test now exercises an offline
+  assistant preview outside the checkout.
+- A preview from the real 1,981-file development run selects 40 evidence cases and
+  the explicitly included, hash-verified rule snapshot. It sends no network request.
+  The actual held-out report is rejected before a request can be made.
+- Provider success/error responses in tests are simulated. No live model request
+  was made because `OPENAI_API_KEY` is not configured. Model usefulness, latency,
+  cost, and detection improvement remain unmeasured.
+- Bandit reports no medium/high findings. This is not an independent security audit.
+
+See [ASSISTANT.md](ASSISTANT.md) for configuration and disclosure controls. Earlier
+records below describe prior revisions; their counts are historical.
 
 ## Update — 23 October 2026
 

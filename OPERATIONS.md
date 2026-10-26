@@ -79,7 +79,7 @@ labels, expected rule IDs, splits, engine version, and scan settings. It reports
 new detections, missed detections, new false positives, removed false positives,
 and metric deltas. Rule IDs must remain stable across revisions. A renamed or
 new rule needs separately adjudicated labels, not an automatic baseline mapping.
-Unknown labels or different corpora cause comparison to fail.
+Unknown labels, incomplete inventories, or different corpora cause comparison to fail.
 
 To repeat a run against captured rules, use its `inputs/manifest.resolved.json`
 and `inputs/rules` with `run`. The referenced samples must still be accessible;
@@ -130,3 +130,17 @@ The native-library benchmark helper `tests/benchmark_system.py OUTPUT_DIRECTORY`
 inventories Python extension modules on Linux, records their assumed-benign
 provenance, and performs a real-file run. It does not establish malware recall.
 See [SECURITY.md](SECURITY.md) for isolation and audit limitations.
+
+
+## Legacy configuration and automation
+
+Environment overrides are evaluated on each configuration load. Invalid JSON or
+parallelism outside 1-32 fails explicitly; `--help` still works with bad settings.
+Saving configuration is atomic and excludes the VirusTotal credential. Supply
+`MALYZ3R_VT_API_KEY` in the environment for each execution environment that needs it.
+
+`scripts/yara_scan.sh SCAN_DIRECTORY RULES_DIRECTORY LOG_FILE` delegates to the
+installed scanner and preserves failures through `pipefail`. It requires all
+three paths and does not default to scanning the entire filesystem. Set
+`MALYZ3R_PYTHON` to the installed virtual environment's Python if needed. It shares
+the scanner's per-file limits but not the workbench's whole-worker supervision.

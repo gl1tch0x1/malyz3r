@@ -45,3 +45,43 @@ resistance. The image is for validation, not unrestricted malware detonation.
 Keep private samples, manifests, run reports, and client identifiers out of public
 Git history. Reports contain local paths and hashes. No sample-upload capability
 is required by the lab; the optional VirusTotal feature queries hashes only.
+
+## Optional LLM advice
+
+The assistant is preview-only unless explicitly invoked with `--send`. Requests
+contain selected development metrics and case identifiers; rule source requires
+separate opt-in. Sample bytes, sample paths, hashes, and provenance fields are
+excluded from requests. Rule names and explicitly included rule text can still
+be sensitive. Review the saved request and applicable provider data policies.
+
+The model has no tools or execution privileges. Structured output, reference
+checks, and input separation improve handling but do not prove prompt-injection
+resistance or factual accuracy. Candidate text remains inactive and unvalidated.
+Split validation relies on the report's asserted labels; it cannot independently
+detect fabricated report metadata. See [ASSISTANT.md](ASSISTANT.md).
+
+
+## MCP and provider boundaries
+
+MCP defaults to a local stdio evidence reader. Returning evidence to an IDE can
+still disclose it to that IDE's model; the no-provider-network default applies
+only to this server. Paths are confined to the configured workspace. Enabling
+`--allow-network` exposes a provider tool that also requires `confirm_send=true`;
+that flag is not proof of a human approval. Use the IDE's approval controls.
+Provider/model/endpoint configuration is fixed at startup. Each provider uses a
+separate credential variable. Compatible endpoints require HTTPS except loopback
+HTTP and never receive another provider's key automatically. This server is for
+a trusted local analyst workstation, not hostile multi-tenant use. See [MCP.md](MCP.md).
+
+
+## Auxiliary scanner hardening
+
+VirusTotal hash lookups reject redirects and oversized/malformed responses and
+return failure on missing credentials or unreadable files. Configuration validates
+parallelism at load time, updates atomically, and omits inherited VirusTotal keys
+when saved. Invalid config is reported instead of silently replaced with defaults.
+File investigation reads at most 1 MiB and displays bounded printable strings and
+256 bytes of hex. ExifTool has a 30-second deadline and monitored 1 MiB output cap;
+its temporary output can briefly exceed the cap between checks. These controls
+are not a sandbox for the external/native parser. File-type detection reads a
+64 KiB prefix. PE certificate-table presence does not verify a signature or trust.

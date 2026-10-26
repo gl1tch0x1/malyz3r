@@ -22,6 +22,17 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class HardeningTests(unittest.TestCase):
+    def test_launcher_preserves_exit_code_without_git_updates(self):
+        import runpy
+
+        with (
+            patch("malware_scanner.cli.main", return_value=3),
+            patch("subprocess.run", side_effect=AssertionError("Launcher must not run git")),
+            self.assertRaises(SystemExit) as outcome,
+        ):
+            runpy.run_path(str(ROOT / "run_scanner.py"), run_name="__main__")
+        self.assertEqual(outcome.exception.code, 3)
+
     def test_help_survives_unavailable_file_logging(self):
         with tempfile.TemporaryDirectory() as tmp:
             for log_path in (Path(tmp) / "absent" / "app.log", Path(tmp)):

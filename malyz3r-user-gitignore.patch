@@ -1,0 +1,24 @@
+diff --git a/.gitignore b/.gitignore
+index fa91a1a..3d1a453 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,12 +1,17 @@
+ __pycache__/
+ *.py[cod]
++*$py.class
+ .venv/
++env/
++venv/
+ *.egg-info/
+ build/
+ dist/
+ reports/
+-*.log
+-.venv*/
+ report.json
++*.log
+ runs/
++assistant-runs/
+ local-corpus/
++.pytest_cache/
++.ruff_cache/

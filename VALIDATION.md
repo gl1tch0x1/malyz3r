@@ -1,4 +1,46 @@
-# PR #2 integration repair - 24 October 2026
+## Expanded analyst components — 26 October 2026
+
+Added evidence-linked outcome composition and investigation queues, compact density controls, map expansion and label visibility, editor font sizing, cursor position and exact-text draft download. Added SVG navigation icons, layered surfaces and short interaction transitions with a reduced-motion override. No runtime dependency or remote asset was introduced.
+
+Chrome workflow checks cover category drill-down, density toggling, map controls, font sizing and downloaded source fidelity in addition to actual YARA evaluation, syntax rejection/acceptance, comparison, exports and mobile overflow assertions. Captures are in `runs/ui-validation/observatory/` and use synthetic test data, not a live threat feed. UI preferences currently apply only to the rendered view; the editor remains a plain-text YARA editor, not an LSP IDE.
+
+## Analyst studio visual refinement — 26 October 2026
+
+The dashboard, detection map and rule workbench share a revised dark visual system with stronger hierarchy, restrained mint accents, explicit warning colors and responsive controls. The map includes page-level node counts, a persistent observed/annotated relationship legend and clear-selection action. Dense sample/hash labels are suppressed until selected; node details remain available in the inspector. The source editor adds synchronized line numbers and moves validation/evaluation actions above the code.
+
+Validation: the Chrome browser workflow exercises actual YARA fixture evaluations, imports, rejected/valid syntax, draft evaluation, comparison, evidence export and graph interactions. It additionally checks the line-number gutter, clear selection and absence of document-wide horizontal overflow on all three screens at 390 px. Desktop captures use 1440 px. JavaScript syntax and Ruff checks pass. Screenshots are under `runs/ui-validation/studio/`; their metrics come from a synthetic test corpus and are not evidence of real-malware detection quality. This iteration changes presentation and interaction, not detection semantics.
+
+# Analyst dashboard redesign - 26 October 2026
+
+The local UI now includes a quality overview with evidence drill-down and compatibility-filtered history, a pan/zoom detection map with typed nodes and provenance-aware inspectors, a copy-on-edit rule workbench, and focused sample investigation/export. The prior simple graph screen was replaced in navigation by the detection map.
+
+Executed checks for this iteration:
+
+- Full Windows unittest suite: 86 tests passed. The 13 assurance/API tests also passed after the final run-operation metadata change.
+- Restricted Linux container: 86 tests discovered, 84 passed and two Windows-only skips. The full validation runner also passed strict lab evaluation, legacy scanner checks, installed-package smoke tests, formatting/lint and dependency consistency.
+- Chrome browser workflow passed against actual bounded YARA jobs and the real local API. Added checks cover precision/false-positive drill-down, map node selection and type filtering, imported rule text, oversized submission errors, rejected syntax, valid syntax, candidate evaluation, preservation of original rule source, sample-report export and the existing comparison/navigation workflow.
+- History tests verify that changed sample hashes are excluded even when manifest bytes stay identical. Graph tests assert that every edge resolves to stored nodes and that no direct rule-to-family coverage edge is fabricated.
+- Non-editable package installation and smoke checks passed; Ruff, JavaScript syntax checks and `git diff --check` passed. Bandit reported no medium/high findings.
+- Screenshots from permitted synthetic browser fixtures are stored locally under `runs/ui-validation/redesign/`. They are evidence of UI behavior, not measured real-malware accuracy.
+
+The editor accepts only configured pack files (12 KB source limit), copies bounded dependencies, and uses the existing wall-clock/memory-limited worker for validation and evaluation. Raw sample contents remain unavailable through HTTP. No additional runtime dependency was introduced.
+
+# Detection assurance extension - 26 October 2026
+
+Local validation on branch `codex/detection-assurance` (not a claim about hosted CI):
+
+- Before changes: 73 unittest tests passed on Windows / Python 3.13.
+- After the backend integration: 82 tests passed on Windows. Ruff checks and formatting, legacy scanner tests, strict fixture evaluation, non-editable installed-package smoke tests and `pip check` passed through `tests/run_validation.py`.
+- Linux / Python 3.13: the same validation runner passed in `malyz3r-assurance-validation`, with 80 tests passed and two Windows-only skips. Container execution used a non-root user, disabled networking, a read-only filesystem, dropped capabilities, no-new-privileges, and bounded memory/PIDs/CPU.
+- The nine assurance/API tests were rerun after the final backend metadata change and passed.
+- `tests/browser_assurance.py --channel chrome` passed against the real HTTP API and actual YARA evaluations of 52 permitted synthetic samples. It checks an empty workspace, launching a background evaluation, baseline/candidate comparison with 26 introduced false positives, invalid-policy recovery, policy rejection, JSON download, evidence navigation, table pagination, empty filters, coverage-cell navigation, rule metrics, graph relationships, a narrow viewport and expired-session errors. No mocked API or detection result is used.
+- The browser test exposed and verified fixes for path-redaction compatibility with the existing strict comparison, stale asynchronous navigation, and stale error notices after successful retry.
+- Installed-wheel smoke checks verify both new modules and bundled web assets. JavaScript syntax validation passed with `node --check`.
+- Bandit at the CI medium/high threshold reported zero findings. `pip-audit` found no known vulnerabilities in the nine pinned runtime dependencies in `constraints.txt`; optional MCP/Playwright transitive dependencies were not included in that audit scope.
+
+The browser test's optional Playwright installation is test tooling, not an application dependency. Results establish functional regression behavior, not real-malware accuracy, comprehensive security assurance, remote-hosting readiness or large-corpus capacity. See `ASSURANCE.md` for limitations and reproducible commands.
+
+## PR #2 integration repair - 24 October 2026
 
 Merged `main` (7dc174a) into the PR branch without rewriting its history. The
 branches independently added many of the same files from the earlier base,

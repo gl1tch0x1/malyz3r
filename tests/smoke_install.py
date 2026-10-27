@@ -28,6 +28,18 @@ from malware_scanner.assistant import assist
 preview = assist(state['run_directory'], 'assistant-preview', 'test-model')
 assert preview['status'] == 'prepared'
 assert preview['network_requested'] is False
+from malware_scanner.web import Workspace, make_server
+workspace = Workspace(Path.cwd())
+assert workspace.history()[0]['run_id'] == state['run_id']
+assert (Path(malware_scanner.__file__).parent / 'web_assets' / 'app.js').is_file()
+assert (Path(malware_scanner.__file__).parent / 'web_assets' / 'workspace.js').is_file()
+from malware_scanner.web_workspace import detection_map
+assert detection_map(workspace.report(state['run_id']))['nodes']
+server, token = make_server(workspace, 0)
+server.server_close()
+from malware_scanner.assurance import compare
+report = json.loads((Path(state['run_directory']) / 'report.json').read_text())
+assert compare(report, report)['comparable']
 print('Installed package and bundled rules: OK')
 """
     env = os.environ.copy()

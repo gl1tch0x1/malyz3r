@@ -151,8 +151,11 @@ class MCPTests(test_assistant.AssistantBase):
             evidence_for(self.root, "run")
 
     def test_stdio_client_discovers_and_calls_tools(self):
-        from mcp import Client
-        from mcp.client.stdio import StdioServerParameters
+        try:
+            from mcp import Client
+            from mcp.client.stdio import StdioServerParameters
+        except (ImportError, AttributeError):
+            self.skipTest("mcp.Client requires mcp>=2.0")
 
         async def check(mode):
             params = StdioServerParameters(
@@ -175,7 +178,10 @@ class MCPTests(test_assistant.AssistantBase):
                 asyncio.run(check(mode))
 
     def test_network_gate(self):
-        from mcp import Client
+        try:
+            from mcp import Client
+        except (ImportError, AttributeError):
+            self.skipTest("mcp.Client requires mcp>=2.0")
 
         async def check():
             server = create_server(self.root, True, "anthropic", "test")

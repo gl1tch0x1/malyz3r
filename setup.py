@@ -15,10 +15,12 @@ setup(
             "malyz3r-workbench=malware_scanner.workbench:main",
             "malyz3r-assist=malware_scanner.assistant:main",
             "malyz3r-mcp=malware_scanner.mcp_server:main",
+            "malyz3r-assurance=malware_scanner.assurance:main",
+            "malyz3r-web=malware_scanner.web:main",
         ]
     },
     include_package_data=True,
-    package_data={"malware_scanner": ["rules/*.yar"]},
+    package_data={"malware_scanner": ["rules/*.yar", "web_assets/*"]},
     python_requires=">=3.10",
     classifiers=[
         "Programming Language :: Python :: 3",

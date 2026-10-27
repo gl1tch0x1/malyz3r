@@ -1,0 +1,4 @@
+{
+  "datasets": {"synthetic-lab": "samples/lab/manifest.json"},
+  "rule_packs": {"bundled": "malware_scanner/rules"}
+}

@@ -33,6 +33,7 @@ Traditional YARA rule deployment frequently suffers from critical operational fa
 
 - [The Detection Engineering Problem](#the-detection-engineering-problem)
 - [System Architecture & Isolation Boundaries](#system-architecture--isolation-boundaries)
+- [Comprehensive Documentation Hub (`docs/`)](#comprehensive-documentation-hub-docs)
 - [Local Detection Assurance Workspace (`malyz3r-web`)](#local-detection-assurance-workspace-malyz3r-web)
 - [Evidence Model & Interactive Detection Map](#evidence-model--interactive-detection-map)
 - [Supervisor Execution Protocol & Worker Boundary](#supervisor-execution-protocol--worker-boundary)
@@ -47,6 +48,7 @@ Traditional YARA rule deployment frequently suffers from critical operational fa
 - [Continuous Linux Security Monitoring & Background Service](#continuous-linux-security-monitoring--background-service)
 - [Multi-Stage Static Analysis Pipeline](#multi-stage-static-analysis-pipeline)
 - [AI-Assisted Investigation Service with Untrusted Prompt Fencing](#ai-assisted-investigation-service-with-untrusted-prompt-fencing)
+- [Deep Triage HUD & Shannon Entropy Spectrum](#deep-triage-hud--shannon-entropy-spectrum)
 - [Controlled AI Learning, Analyst Feedback & Rule Promotion](#controlled-ai-learning-analyst-feedback--rule-promotion)
 - [Installation & Environment Setup](#installation--environment-setup)
 - [Docker Packaging & Corpus Persistence](#docker-packaging--corpus-persistence)
@@ -137,25 +139,53 @@ flowchart TB
 
 ---
 
+## Comprehensive Documentation Hub (`docs/`)
+
+All technical specifications, operational runbooks, AI assistant guides, and architectural deep-dives are organized in the [`docs/`](docs/) directory:
+
+| Document | Focus & Target Audience | Core Topics Covered |
+| :--- | :--- | :--- |
+| [**`docs/OPERATIONS.md`**](docs/OPERATIONS.md) | **SOC Engineers & System Administrators** | Daemon installation, systemd sandboxing (`ProtectSystem=full`), backpressure monitoring, and live operational triage playbooks. |
+| [**`docs/ASSURANCE.md`**](docs/ASSURANCE.md) | **Detection Engineers & Researchers** | Two-sided 95% Wilson score confidence bounds, false-positive budget gates, holdout data governance, and empirical calibration models. |
+| [**`docs/ASSISTANT.md`**](docs/ASSISTANT.md) | **AI Engineers & Security Architects** | Multi-provider LLM integrations (OpenAI, Anthropic Claude, Google Gemini, Ollama), untrusted prompt fencing, and offline fallbacks. |
+| [**`docs/MCP.md`**](docs/MCP.md) | **Developers & Threat Hunters** | FastMCP 2.3.0 stdio server, IDE integration with Cursor, Claude Desktop, Antigravity, and non-exfiltrating sanitized schemas. |
+| [**`docs/LAB.md`**](docs/LAB.md) | **CI/CD Engineers & Automation Teams** | Headless CLI validation runner, reproducible manifest fixtures, memory bounds, and automated release policy regression checks. |
+| [**`docs/VALIDATION.md`**](docs/VALIDATION.md) | **QA & Compliance Analysts** | Comprehensive 72-test verification suite, static Pyright type certification matrix, and Playwright browser regression harness. |
+| [**`docs/WIKI.md`**](docs/WIKI.md) | **Full Technical Deep Dive** | Architectural encyclopedia covering token security, kernel audit hooks (`kauditd`), inotify debouncing, and SQLite persistence. |
+| [**`docs/images/`**](docs/images/) | **Visual UI Gallery** | High-resolution captures of the continuous monitor, deep triage HUD, detection relationship map, and benchmark runs. |
+
+---
+
 ## Local Detection Assurance Workspace (`malyz3r-web`)
 
-The `malyz3r-web` interface runs entirely locally over an authenticated loopback connection (`http://127.0.0.1:8765/`). Built with bundled HTML, CSS, JavaScript, and SVG, it requires zero external CDNs, build steps, or cloud infrastructure.
+The `malyz3r-web` interface runs entirely locally over an authenticated loopback connection (`http://127.0.0.1:8765/`). Built with modern bundled HTML5, CSS3 glassmorphism, JavaScript ES2024, and SVG, it requires zero external CDNs, build steps, or cloud infrastructure.
 
 ```bash
 # Launch the local assurance console
 malyz3r-web --workspace . --catalog workspace.example.json --port 8765
 ```
 
+### 1. Continuous Security Monitoring & Real-Time Telemetry Cockpit
+
 <p align="center">
-  <img src="docs/images/quality-dashboard.png" alt="malyz3r Detection Quality & Assurance Cockpit" width="95%" />
+  <img src="docs/images/continuous-security-monitoring.png" alt="malyz3r Continuous Security Monitoring Cockpit" width="95%" />
 </p>
 
-### Analytical Features & Capabilities:
-- **Evidence-Linked Metric Cards**: Precision, Recall, False Positives, Missed Positives, and Scan Throughput link directly to underlying sample evidence. Clicking any card filters the investigation view to the contributing samples.
-- **Outcome Composition Donut**: Visual breakdown separating True Positives, True Negatives, False Positives, False Negatives, and Unscored/Incomplete observations.
-- **Investigation Queue**: One-click triage filters isolating benign samples mistakenly detected by candidate rules and missed malware targets.
-- **Baseline vs. Candidate Drift**: Real-time delta tracking comparing candidate performance against baseline production runs across Recall, FPR, Scan Duration, and Throughput (samples/sec).
-- **Longitudinal Calibration Trendlines**: Tracks metric trajectories across historical runs, ensuring rules maintain stability over successive authoring cycles.
+- **DEFCON Posture Banner**: Live status indicator displaying current defense posture, kernel hook integration (`kauditd` / `netlink`), and inotify/fanotify debounce stability.
+- **Telemetry HUD Cards**: Real-time state metrics tracking Core Monitor daemon status, Kernel Audit Telemetry syscall counters, Queue & Backpressure health, Reconciliation integrity, and Active threat interceptions.
+- **Live Process & Inotify Execution Stream**: Chronological execution trace highlighting newly detected filesystem events, file touches, and execution spikes with one-click **Triage Alert** actions.
+- **Configured Monitored Locations**: Dynamic path configuration allowing analysts to add watchpaths (e.g. `/tmp`, `/usr/bin`, `/etc/cron.d`) with instant synchronization.
+
+### 2. Evaluation Runs & Detection Benchmark Workbench
+
+<p align="center">
+  <img src="docs/images/evaluations-benchmark-runs.png" alt="malyz3r Evaluation Runs and Benchmarks Workbench" width="95%" />
+</p>
+
+- **Docked Benchmark Context Toolbar**: Sleek dark-glass toolbar replacing legacy emojis with crisp SVG vector icons (`radar crosshair` for Baseline Reference, `activity pulse` for Candidate Under Test, and `refresh loop` for Sync Runs). Pinned flush to the top layout to eliminate vertical centering gaps.
+- **Single-Vector Navigation Iconography**: High-contrast, tactical sidebar with exactly one vector glyph per navigation element, eliminating duplicate icons.
+- **Zero-Barrier Loopback Authentication**: Automatic loopback token handshake (`window.__MALY_TOKEN__`) injected via secure CSP (`script-src 'self' 'unsafe-inline'`), providing immediate access without 401 connection stalls.
+- **High-Tech Form Controls**: Glassmorphic cyber dropdowns and buttons with custom cyan chevrons, hover glows, and responsive micro-interactions.
 
 ---
 
@@ -652,6 +682,25 @@ Malware binaries frequently embed adversarial strings intended to hijack AI syst
 
 ---
 
+## Deep Triage HUD & Shannon Entropy Spectrum
+
+When investigating active alerts or suspicious binaries, analysts can launch the **Deep Triage HUD** for in-depth static decomposition and evidence-linked telemetry:
+
+<p align="center">
+  <img src="docs/images/investigations-deep-triage.png" alt="malyz3r Deep Triage HUD and Entropy Analysis" width="95%" />
+</p>
+
+### Analytical Capabilities in Deep Triage:
+1. **Tri-Vector Risk Radar**: Breaks down overall risk score ($0$ to $100$) into three independent dimensions:
+   - **Signature Threat**: Matches against compiled YARA rule packs with confidence weights.
+   - **Heuristic Threat**: Extension spoofing, executable headers disguised as documents, Zip-Slip path traversals, and anomalous section names.
+   - **Behavioral Indicators**: Extracted plain-text/encoded C2 URLs, IP addresses, persistence commands (`cron`, `systemd`, `init.d`), and privilege escalation artifacts.
+2. **Shannon Entropy Spectrum**: Visualizes byte randomness across binary segments ($0.0$ to $8.0$ bits/byte). Chunks exceeding $7.2$ bits/byte are automatically flagged as packed routines, cryptographic key material, or encrypted payloads.
+3. **MITRE ATT&CK Tactical Matrix**: Automatically correlates rule tags to MITRE Tactics (e.g. `TA0002 Execution`, `TA0003 Persistence`, `TA0005 Defense Evasion`) and discrete sub-techniques.
+4. **Header Architecture & Authenticode Inspector**: Parses ELF/PE headers to extract machine target (x86_64, ARM, RISC-V), compiler timestamps, section permissions (e.g. `W+X` memory segments), and Authenticode certificate table offsets.
+
+---
+
 ## Controlled AI Learning, Analyst Feedback & Rule Promotion
 
 To continuously improve detection quality without risking autonomous model hallucinations or uncontrolled self-training, `malyz3r` implements a human-in-the-loop detection engineering workflow:
@@ -786,9 +835,16 @@ python tests/browser_assurance.py --channel chrome --screenshot runs/ui-validati
 │   ├── workbench.py          # Subprocess supervisor and analyst workflow CLI
 │   └── worker.py             # Supervised child process worker
 ├── datasets/                 # Packaged evaluation and calibration datasets
-├── docs/                     # Comprehensive documentation & architectural guides
+├── docs/                     # Comprehensive documentation hub & technical guides
+│   ├── ASSISTANT.md          # Multi-provider LLM assistant, guardrails & prompt fencing
+│   ├── ASSURANCE.md          # Mathematical scoring, Wilson score CIs & release gates
+│   ├── LAB.md                # Headless CI/CD evaluation runner & smoke validation
+│   ├── MCP.md                # FastMCP 2.3.0 stdio server guide for IDE integration
+│   ├── OPERATIONS.md         # SOC runbooks, systemd sandboxing & incident response
+│   ├── VALIDATION.md         # Platform test matrix, Pyright typing & Playwright harness
+│   ├── WIKI.md               # Technical encyclopedia & deep system internals
 │   ├── diagrams/             # Architectural Mermaid diagrams and vector SVGs
-│   └── images/               # Curated demo screenshots and visual assets
+│   └── images/               # High-resolution dashboard screenshots & triage HUD
 ├── local-corpus/             # Local sample corpora mount point
 ├── samples/lab/              # Harmless synthetic test fixtures and manifests
 ├── scripts/                  # Automation and rule generation scripts
@@ -800,11 +856,11 @@ python tests/browser_assurance.py --channel chrome --screenshot runs/ui-validati
 ├── constraints.txt           # Pinned dependency constraints
 ├── workspace.example.json    # Example catalog using synthetic fixtures
 ├── policies/                 # Per-rule and versioned release policies
-├── ASSURANCE.md              # Web workspace and scoring specification
-├── VALIDATION.md             # Dated verification results and platform matrix
-├── MCP.md                    # Detailed Model Context Protocol guide
 └── README.md                 # Project documentation
 ```
+
+> [!NOTE]
+> **Patch File Cleanup**: Legacy patch files such as `malyz3r-user-gitignore.patch` are obsolete and have been pruned from the workspace. All ignore patterns (including `*.log`, `report.json`, `.pytest_cache/`, `.ruff_cache/`, `runs/`, and virtual environment directories) are natively incorporated and version-controlled directly within [`.gitignore`](.gitignore).
 
 ---
 

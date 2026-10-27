@@ -17,6 +17,7 @@ setup(
             "malyz3r-mcp=malware_scanner.mcp_server:main",
             "malyz3r-assurance=malware_scanner.assurance:main",
             "malyz3r-web=malware_scanner.web:main",
+            "malyz3r-monitor=malware_scanner.service:main",
         ]
     },
     include_package_data=True,

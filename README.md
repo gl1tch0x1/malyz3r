@@ -44,6 +44,10 @@ Traditional YARA rule deployment frequently suffers from critical operational fa
 - [Multi-Provider AI Assistant (`malyz3r-assist`)](#multi-provider-ai-assistant-malyz3r-assist)
 - [FastMCP IDE Integration (`malyz3r-mcp`)](#fastmcp-ide-integration-malyz3r-mcp)
 - [Interactive Threat Hunting CLI & Direct Lab](#interactive-threat-hunting-cli--direct-lab)
+- [Continuous Linux Security Monitoring & Background Service](#continuous-linux-security-monitoring--background-service)
+- [Multi-Stage Static Analysis Pipeline](#multi-stage-static-analysis-pipeline)
+- [AI-Assisted Investigation Service with Untrusted Prompt Fencing](#ai-assisted-investigation-service-with-untrusted-prompt-fencing)
+- [Controlled AI Learning, Analyst Feedback & Rule Promotion](#controlled-ai-learning-analyst-feedback--rule-promotion)
 - [Installation & Environment Setup](#installation--environment-setup)
 - [Docker Packaging & Corpus Persistence](#docker-packaging--corpus-persistence)
 - [Automated Testing & CI/CD Verification](#automated-testing--cicd-verification)
@@ -540,6 +544,142 @@ malyz3r
 - Process Virtual Memory scanning for injected payloads and reflective DLLs.
 - Hexdump and string preview for suspicious byte sequences.
 - VirusTotal v3 hash queries (requires `VT_API_KEY`).
+
+---
+
+## Continuous Linux Security Monitoring & Background Service
+
+`malyz3r` extends detection engineering into continuous, persistent background monitoring for Linux endpoints. It operates autonomously without requiring an open browser or interactive terminal.
+
+```mermaid
+flowchart LR
+    FS[(Linux Filesystem)] -->|inotify events| Normalizer["Event Normalizer & Debouncer"]
+    FS -->|Periodic Sweep| Reconcile["Reconciliation Scanner"]
+    Normalizer --> Queue["Bounded Work Queue (Backpressure Guard)"]
+    Reconcile --> Queue
+    Queue --> Pipeline["Multi-Stage Analysis Pipeline"]
+    Pipeline --> Storage[(SQLite Store: ~/.malyz3r_store.db)]
+    Storage --> UI["Assurance Dashboard (Loopback API)"]
+```
+
+### 1. Service Architecture & Privilege Separation
+The monitoring service is built with strict principle-of-least-privilege hardening:
+- **Systemd Service Unit**: Integrated generator with security isolation flags:
+  - `NoNewPrivileges=true`: Disallows privilege escalation.
+  - `ProtectSystem=full`: Mounts `/usr`, `/boot`, and `/etc` as read-only.
+  - `ProtectHome=read-only`: Guards user home directories, permitting writes only to explicit database/config paths.
+  - `PrivateTmp=true`: Isolates `/tmp` namespace from the host.
+  - `Restart=on-failure`: Recovers automatically from unexpected faults with backoff (`RestartSec=5s`).
+- **Signal Handling**: Responds cleanly to `SIGTERM` and `SIGINT` (graceful worker drainage and lock release) and `SIGHUP` (on-demand reconciliation sweep).
+
+### 2. Service Management Commands
+```bash
+# Install systemd unit (system-wide or user service)
+malyz3r service install
+malyz3r service install --user
+
+# Service controls via systemctl
+malyz3r service start
+malyz3r service stop
+malyz3r service status
+
+# Run directly in foreground (development/testing)
+malyz3r service run
+
+# Trigger an immediate reconciliation sweep across monitored locations
+malyz3r service reconcile
+```
+
+### 3. File-System Stabilization & Deduplication
+To prevent partial scans of active downloads or expanding archives:
+- **Debounce Stabilization**: Verifies file size and `mtime` remain stable across configurable intervals (`debounce_seconds: 0.5s`, up to 4 retries).
+- **Exclusion Filters**: Automatically ignores temporary swap files, build outputs, and runtime directories (`*.tmp`, `*.swp`, `*/.git/*`, `*/__pycache__/*`, `/proc/*`, `/sys/*`).
+- **Backpressure Work Queues**: Enforces strict queue bounds (`max_queue_size: 1000`). If saturated, drops/defers work and increments `events_dropped` without silent failure or memory bloat.
+
+---
+
+## Multi-Stage Static Analysis Pipeline
+
+Suspicious files observed by the monitoring agent or submitted via CLI undergo a staged, safe inspection pipeline. **Samples are strictly read as inert data and never executed on the host.**
+
+```mermaid
+flowchart TD
+    S1["Stage 1: Fingerprinting & Headers<br/>SHA256, MD5, MIME magic, Extension mismatch"] --> S2
+    S2["Stage 2: Deterministic YARA Engine<br/>Compiled 66 rule packs with timeout protection"] --> S3
+    S3["Stage 3: Deep Static Inspection<br/>ELF/PE headers, Shannon entropy, Indicators"] --> S4
+    S4["Stage 4: Evidence Aggregation<br/>Distinguishes observed facts from hypotheses"] --> S5
+    S5["Stage 5: AI-Assisted Interpretation<br/>Structured LLM analysis with prompt fencing"] --> S6
+    S6["Stage 6: Investigation Report<br/>Sanitized standalone HTML & JSON exports"]
+```
+
+1. **Stage 1: Fingerprint & Format Verification**: Calculates cryptographic digests (SHA-256, MD5), byte size, permissions, and validates actual magic bytes against file extensions (detecting masked executables like `invoice.pdf` containing ELF/PE headers).
+2. **Stage 2: Deterministic YARA Scan**: Compiles the verified detection ruleset and scans bounded byte buffers with a strict 15-second timeout. Scanning errors and timeouts are recorded explicitly rather than reported as clean non-matches.
+3. **Stage 3: Static Binary Inspection**:
+   - **ELF Header Parser**: Reads machine architecture (x86_64, AArch64, ARM, RISC-V), endianness, ABI, and binary type (`ET_EXEC`, `ET_DYN`).
+   - **PE Authenticode Table**: Detects PE structure and validates Authenticode certificate directory bounds without trusting self-signed signatures.
+   - **Shannon Entropy Calculation**: Computes mathematical entropy ($0.0$ to $8.0$). Chunks exceeding $7.0$ are flagged as potential packed code or encrypted payloads.
+   - **Suspicious String Extraction**: Bounded extraction of C2 indicators (IPv4 addresses, HTTP/HTTPS URLs, shell execution commands like `curl`, `wget`, `bash -i`, `/dev/tcp`).
+   - **Safe Archive Inspection**: Inspects ZIP and TAR archives without disk extraction, immediately detecting directory traversal risks (Zip-Slip `../`) and enforcing entries/size limits.
+4. **Stage 4: Evidence Aggregation**: Compiles observed evidence, inferred hypotheses, and limitations into an immutable investigation record.
+
+---
+
+## AI-Assisted Investigation Service with Untrusted Prompt Fencing
+
+`malyz3r` integrates multi-provider LLMs (OpenAI, Anthropic Claude, Google Gemini, and Local Ollama/vLLM) to assist analysts in interpreting complex evidence.
+
+### Prompt Injection Defenses
+Malware binaries frequently embed adversarial strings intended to hijack AI systems. `malyz3r` enforces strict security boundaries:
+- **Untrusted Fencing**: All sample strings, paths, and headers are strictly quarantined inside `<untrusted_sample_evidence>` tags.
+- **System Guardrails**: Explicit instructions command the model never to treat sample content as instructions, never grant shell execution or tool access, and never overturn deterministic YARA matches.
+- **Strict Schema Enforcement**: Responses must conform to the required JSON schema:
+```json
+{
+  "assessment": "malicious | suspicious | benign | unknown",
+  "summary": "Evidence-grounded explanation",
+  "confidence": 0.85,
+  "confidence_basis": "Matched known backdoor signature and suspicious binary features.",
+  "supporting_evidence": ["YARA match: backdoor", "ELF 64-bit architecture"],
+  "contradicting_evidence": [],
+  "matched_rules": ["ruleset:backdoor"],
+  "indicators": ["192.168.1.100"],
+  "limitations": ["Static analysis only"],
+  "recommended_actions": ["Isolate host immediately"],
+  "analysis_status": "complete"
+}
+```
+- **Deterministic Offline Fallback**: If an AI provider is unconfigured, rate-limited, or unreachable, `malyz3r` automatically falls back to an evidence-grounded rule-based assessment without failing the scan or reporting false clean results.
+
+---
+
+## Controlled AI Learning, Analyst Feedback & Rule Promotion
+
+To continuously improve detection quality without risking autonomous model hallucinations or uncontrolled self-training, `malyz3r` implements a human-in-the-loop detection engineering workflow:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Analyst
+    participant Dashboard as Web Dashboard / API
+    participant Store as SQLite Store
+    participant Engine as Learning & Regression Engine
+    participant Rules as Production Ruleset (~/rules)
+
+    Analyst->>Dashboard: Submit Verified Feedback (Confirmed Malicious / FP)
+    Dashboard->>Store: Record Feedback & Append to Versioned Manifest
+    Analyst->>Dashboard: Propose Candidate YARA Rule
+    Dashboard->>Engine: Validate YARA Syntax & Compile
+    Engine->>Engine: Run Regression Tests on Baseline vs Candidate
+    Engine-->>Dashboard: Return Wilson Score Delta & Gate Decision
+    Analyst->>Dashboard: Authorize Rule Promotion
+    Dashboard->>Rules: Promote Rule to Production (Save Rollback Source)
+    Dashboard->>Store: Audit Log Promotion Event
+```
+
+1. **Analyst Feedback Collection**: Authorized analysts record ground-truth verdicts (`confirmed_malicious`, `confirmed_benign`, `false_positive`, `inconclusive`) with technical rationale.
+2. **Versioned Learning Dataset**: Verified feedback records are automatically formatted into reproducible manifest files for evaluation in `malyz3r-lab`.
+3. **Regression Testing Gate**: Proposed candidate rules are evaluated against baseline datasets using `assurance.compare` and `assurance.gate`. A rule causing false-positive regressions fails the release gate.
+4. **Human Authorization Gate**: Candidate rules **never enter production automatically**. Promotion requires explicit human authorization, and previous rule sources are preserved as rollback backups.
 
 ---
 

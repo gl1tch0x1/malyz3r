@@ -4,7 +4,7 @@
   <a href="https://deepwiki.com/gl1tch0x1/malyz3r"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
   <a href="tests/"><img src="https://img.shields.io/badge/tests-72%20local%20checks-brightgreen.svg" alt="Validation Suite" /></a>
   <a href="malware_scanner/rules/"><img src="https://img.shields.io/badge/YARA%20Rules-66%20files%20%7C%2069%20detectors-blue.svg" alt="YARA Rules" /></a>
-  <a href="MCP.md"><img src="https://img.shields.io/badge/MCP-FastMCP%202.3.0-orange.svg" alt="MCP Server" /></a>
+  <a href="docs/MCP.md"><img src="https://img.shields.io/badge/MCP-FastMCP%202.3.0-orange.svg" alt="MCP Server" /></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python Version" /></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Code Style" /></a>
   <a href="pyrightconfig.json"><img src="https://img.shields.io/badge/type%20checking-pyright%20strict-blueviolet.svg" alt="Type Checking" /></a>
